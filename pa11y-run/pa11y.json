@@ -1,0 +1,8 @@
+{
+  "actions": [
+    "wait for element .jp-LauncherCard-label[title=\"Live updating code documentation from the active kernel\"] to be visible"
+  ],
+  "runners": ["axe"],
+  "reporter": "html",
+  "screenCapture": "./main.png"
+}

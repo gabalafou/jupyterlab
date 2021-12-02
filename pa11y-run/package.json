@@ -1,0 +1,13 @@
+{
+  "name": "pa11y-run",
+  "version": "1.0.0",
+  "description": "Place to test running pa11y against JupyterLab",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "pa11y": "^6.1.1"
+  },
+  "scripts": {
+    "start": "pa11y http://localhost:8888/lab > report.html"
+  }
+}
