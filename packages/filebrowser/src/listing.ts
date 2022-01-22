@@ -786,6 +786,8 @@ export class DirListing extends Widget {
 
     // Remove extra classes from the nodes.
     nodes.forEach(item => {
+      const checkbox = item.querySelector('input');
+      if (checkbox) checkbox.checked = false;
       item.classList.remove(SELECTED_CLASS);
       item.classList.remove(RUNNING_CLASS);
       item.classList.remove(CUT_CLASS);
@@ -803,6 +805,8 @@ export class DirListing extends Widget {
         this._hiddenColumns
       );
       if (this.selection[item.path]) {
+        const checkbox = node.querySelector('input');
+        if (checkbox) checkbox.checked = true;
         node.classList.add(SELECTED_CLASS);
 
         if (this._isCut && this._model.path === this._prevPath) {
@@ -1381,8 +1385,16 @@ export class DirListing extends Widget {
     const path = items[index].path;
     const selected = Object.keys(this.selection);
 
+    const wasItemSelectedViaCheckbox = /input/i.test(
+      (event.target as Element).tagName
+    );
+
     // Handle toggling.
-    if ((IS_MAC && event.metaKey) || (!IS_MAC && event.ctrlKey)) {
+    if (
+      (IS_MAC && event.metaKey) ||
+      (!IS_MAC && event.ctrlKey) ||
+      wasItemSelectedViaCheckbox
+    ) {
       if (this.selection[path]) {
         delete this.selection[path];
       } else {
@@ -1979,12 +1991,15 @@ export namespace DirListing {
       hiddenColumns?: Set<DirListing.ToggleableColumn>
     ): HTMLElement {
       const node = document.createElement('li');
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
       const icon = document.createElement('span');
       const text = document.createElement('span');
       const modified = document.createElement('span');
       icon.className = ITEM_ICON_CLASS;
       text.className = ITEM_TEXT_CLASS;
       modified.className = ITEM_MODIFIED_CLASS;
+      node.appendChild(checkbox);
       node.appendChild(icon);
       node.appendChild(text);
       node.appendChild(modified);
