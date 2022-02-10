@@ -39,12 +39,9 @@ fi
 
 if [[ $GROUP == docs ]]; then
     # Build the docs (includes API docs)
+    pip install .[docs]
     pushd docs
-    conda env create -f environment.yml
-    conda init --all
-    source $CONDA/bin/activate jupyterlab_documentation
     make html
-    conda deactivate
     popd
 fi
 
@@ -67,6 +64,7 @@ if [[ $GROUP == lint ]]; then
     jlpm run prettier:check || (echo 'Please run `jlpm run prettier` locally and push changes' && exit 1)
     jlpm run eslint:check || (echo 'Please run `jlpm run eslint` locally and push changes' && exit 1)
     jlpm run eslint:check:typed || (echo echo 'Please run `jlpm run eslint:typed` locally and push changes' && exit 1)
+    jlpm run stylelint:check || (echo 'Please run `jlpm run stylelint` locally and push changes' && exit 1)
 fi
 
 

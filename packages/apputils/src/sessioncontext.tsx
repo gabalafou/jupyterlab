@@ -28,7 +28,7 @@ import { Dialog, showDialog } from './dialog';
  * #### Notes
  * The current session connection is `.session`, the current session's kernel
  * connection is `.session.kernel`. For convenience, we proxy several kernel
- * connection and and session connection signals up to the session context so
+ * connection and session connection signals up to the session context so
  * that you do not have to manage slots as sessions and kernels change. For
  * example, to act on whatever the current kernel's iopubMessage signal is
  * producing, connect to the session context `.iopubMessage` signal.
@@ -832,8 +832,7 @@ export class SessionContext implements ISessionContext {
    * Change the kernel.
    */
   private async _changeKernel(
-    model: Partial<Kernel.IModel> = {},
-    isInit = false
+    model: Partial<Kernel.IModel> = {}
   ): Promise<Kernel.IKernelConnection | null> {
     if (model.name) {
       this._pendingKernelName = model.name;

@@ -13,7 +13,7 @@ import { ISignal, Signal } from '@lumino/signaling';
 
 import { Panel } from '@lumino/widgets';
 
-import { DebugProtocol } from 'vscode-debugprotocol';
+import { DebugProtocol } from '@vscode/debugprotocol';
 
 import { DebuggerHandler } from './handler';
 
@@ -30,6 +30,11 @@ export interface IDebugger {
    * Whether the current debugger is started.
    */
   readonly isStarted: boolean;
+
+  /**
+   * Whether the session is pausing for exceptions.
+   */
+  readonly isPausingOnExceptions: boolean;
 
   /**
    * The debugger service's model.
@@ -50,6 +55,16 @@ export interface IDebugger {
    * Removes all the breakpoints from the current notebook or console
    */
   clearBreakpoints(): Promise<void>;
+
+  /**
+   * Used to determine if kernel has pause on exception capabilities
+   */
+  pauseOnExceptionsIsValid(): boolean;
+
+  /**
+   * Handles enabling and disabling of Pause on Exception
+   */
+  pauseOnExceptions(enable: boolean): Promise<void>;
 
   /**
    * Continues the execution of the current thread.
@@ -93,12 +108,12 @@ export interface IDebugger {
    * Request rich representation of a variable.
    *
    * @param variableName The variable name to request
-   * @param variablesReference The variable reference to request
+   * @param frameId The current frame id in which to request the variable
    * @returns The mime renderer data model
    */
   inspectRichVariable(
     variableName: string,
-    variablesReference?: number
+    frameId?: number
   ): Promise<IDebugger.IRichVariable>;
 
   /**
@@ -106,6 +121,11 @@ export interface IDebugger {
    * table view.
    */
   displayDefinedVariables(): Promise<void>;
+
+  /**
+   * Requests all the loaded modules and display them.
+   */
+  displayModules(): Promise<void>;
 
   /**
    * Request whether debugging is available for the given session connection.
@@ -209,6 +229,21 @@ export namespace IDebugger {
   };
 
   /**
+   * The type for a kernel source file.
+   */
+  export type KernelSource = {
+    /**
+     * The name of the source.
+     */
+    name: string;
+
+    /**
+     * The path of the source.
+     */
+    path: string;
+  };
+
+  /**
    * Single breakpoint in an editor.
    */
   export interface IBreakpoint extends DebugProtocol.Breakpoint {}
@@ -292,9 +327,31 @@ export namespace IDebugger {
     connection: Session.ISessionConnection | null;
 
     /**
+     * Returns the initialize response .
+     */
+    readonly capabilities: DebugProtocol.Capabilities | undefined;
+
+    /**
      * Whether the debug session is started
      */
     readonly isStarted: boolean;
+
+    /**
+     * Whether the debug session is pausing on exceptions.
+     */
+    pausingOnExceptions: string[];
+
+    /**
+     * Whether the debug session is pausing on exceptions.
+     */
+    exceptionPaths: string[];
+
+    /**
+     * Get exception filters and default values.
+     */
+    exceptionBreakpointFilters:
+      | DebugProtocol.ExceptionBreakpointsFilter[]
+      | undefined;
 
     /**
      * Signal emitted for debug event messages.
@@ -541,9 +598,10 @@ export namespace IDebugger {
          * Whether the kernel supports variable rich rendering or not.
          */
         richRendering?: boolean;
-        stoppedThreads: number[];
         tmpFilePrefix: string;
         tmpFileSuffix: string;
+        stoppedThreads: number[];
+        exceptionPaths: string[];
       };
     }
 
@@ -616,6 +674,11 @@ export namespace IDebugger {
 
   /**
    * Select variable in the variables explorer.
+   *
+   * @hidden
+   *
+   * #### Notes
+   * This is experimental API
    */
   export interface IVariableSelection
     extends Pick<
@@ -624,28 +687,9 @@ export namespace IDebugger {
     > {}
 
   /**
-   * Debugger variables explorer interface.
-   */
-  export interface IVariablesPanel {
-    /**
-     * Select variable in the variables explorer.
-     */
-    latestSelection: IVariableSelection | null;
-    /**
-     * Variable view mode.
-     */
-    viewMode: 'tree' | 'table';
-  }
-
-  /**
    * Debugger sidebar interface.
    */
-  export interface ISidebar extends Panel {
-    /**
-     * Debugger variables explorer.
-     */
-    variables: IVariablesPanel;
-  }
+  export interface ISidebar extends Panel {}
 
   /**
    * A utility to find text editors used by the debugger.
@@ -803,6 +847,11 @@ export namespace IDebugger {
       readonly sources: ISources;
 
       /**
+       * The kernel sources UI model.
+       */
+      readonly kernelSources: IKernelSources;
+
+      /**
        * The set of threads in stopped state.
        */
       stoppedThreads: Set<number>;
@@ -863,6 +912,42 @@ export namespace IDebugger {
     }
 
     /**
+     * The kernel sources UI model.
+     */
+    export interface IKernelSources {
+      /**
+       * The kernel source.
+       */
+      kernelSources: IDebugger.KernelSource[] | null;
+
+      /**
+       * The filter to apply.
+       */
+      filter: string;
+
+      /**
+       * Signal emitted when the kernel sources have changed.
+       */
+      readonly changed: ISignal<
+        IDebugger.Model.IKernelSources,
+        IDebugger.KernelSource[] | null
+      >;
+
+      /**
+       * Signal emitted when a kernel source has be opened in the main area.
+       */
+      readonly kernelSourceOpened: ISignal<
+        IDebugger.Model.IKernelSources,
+        IDebugger.Source | null
+      >;
+
+      /**
+       * Open a source in the main area.
+       */
+      open(source: IDebugger.Source): void;
+    }
+
+    /**
      * The variables UI model.
      */
     export interface IVariables {
@@ -880,6 +965,11 @@ export namespace IDebugger {
        * Signal emitted when the current variable has been expanded.
        */
       readonly variableExpanded: ISignal<this, IDebugger.IVariable>;
+
+      /**
+       * Selected variable in the variables explorer.
+       */
+      selectedVariable: IVariableSelection | null;
 
       /**
        * Expand a variable.

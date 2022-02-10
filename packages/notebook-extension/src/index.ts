@@ -15,7 +15,9 @@ import {
   createToolbarFactory,
   Dialog,
   ICommandPalette,
+  IKernelStatusModel,
   InputDialog,
+  ISessionContext,
   ISessionContextDialogs,
   IToolbarWidgetRegistry,
   MainAreaWidget,
@@ -25,7 +27,11 @@ import {
   WidgetTracker
 } from '@jupyterlab/apputils';
 import { Cell, CodeCell, ICellModel, MarkdownCell } from '@jupyterlab/cells';
-import { IEditorServices } from '@jupyterlab/codeeditor';
+import {
+  CodeEditor,
+  IEditorServices,
+  IPositionModel
+} from '@jupyterlab/codeeditor';
 import { PageConfig } from '@jupyterlab/coreutils';
 
 import { IDocumentManager } from '@jupyterlab/docmanager';
@@ -82,7 +88,7 @@ import {
 } from '@lumino/coreutils';
 import { DisposableSet, IDisposable } from '@lumino/disposable';
 import { Message, MessageLoop } from '@lumino/messaging';
-import { Menu, Panel } from '@lumino/widgets';
+import { Menu, Panel, Widget } from '@lumino/widgets';
 import { logNotebookOutput } from './nboutput';
 
 /**
@@ -169,6 +175,16 @@ namespace CommandIDs {
 
   export const selectBelow = 'notebook:move-cursor-down';
 
+  export const selectHeadingAboveOrCollapse =
+    'notebook:move-cursor-heading-above-or-collapse';
+
+  export const selectHeadingBelowOrExpand =
+    'notebook:move-cursor-heading-below-or-expand';
+
+  export const insertHeadingAbove = 'notebook:insert-heading-above';
+
+  export const insertHeadingBelow = 'notebook:insert-heading-below';
+
   export const extendAbove = 'notebook:extend-marked-cells-above';
 
   export const extendTop = 'notebook:extend-marked-cells-top';
@@ -246,11 +262,11 @@ namespace CommandIDs {
 
   export const autoClosingBrackets = 'notebook:toggle-autoclosing-brackets';
 
-  export const toggleCollapseCmd = 'Collapsible_Headings:Toggle_Collapse';
+  export const toggleCollapseCmd = 'notebook:toggle-heading-collapse';
 
-  export const collapseAllCmd = 'Collapsible_Headings:Collapse_All';
+  export const collapseAllCmd = 'notebook:collapse-all-headings';
 
-  export const expandAllCmd = 'Collapsible_Headings:Expand_All';
+  export const expandAllCmd = 'notebook:expand-all-headings';
 
   export const copyToClipboard = 'notebook:copy-to-clipboard';
 }
@@ -270,6 +286,11 @@ const FORMAT_EXCLUDE = ['notebook', 'python', 'custom'];
  * Setting Id storing the customized toolbar definition.
  */
 const PANEL_SETTINGS = '@jupyterlab/notebook-extension:panel';
+
+/**
+ * The id to use on the style tag for the side by side margins.
+ */
+const SIDE_BY_SIDE_STYLE_ID = 'jp-NotebookExtension-sideBySideMargins';
 
 /**
  * The notebook widget tracker provider.
@@ -665,6 +686,71 @@ const copyOutputPlugin: JupyterFrontEndPlugin<void> = {
 };
 
 /**
+ * Kernel status indicator.
+ */
+const kernelStatus: JupyterFrontEndPlugin<void> = {
+  id: '@jupyterlab/notebook-extensions:kernel-status',
+  activate: (
+    app: JupyterFrontEnd,
+    tracker: INotebookTracker,
+    kernelStatus: IKernelStatusModel
+  ) => {
+    const provider = (widget: Widget | null) => {
+      let session: ISessionContext | null = null;
+
+      if (widget && tracker.has(widget)) {
+        return (widget as NotebookPanel).sessionContext;
+      }
+
+      return session;
+    };
+
+    kernelStatus.addSessionProvider(provider);
+  },
+  requires: [INotebookTracker, IKernelStatusModel],
+  autoStart: true
+};
+
+/**
+ * Cursor position.
+ */
+const lineColStatus: JupyterFrontEndPlugin<void> = {
+  id: '@jupyterlab/notebook-extensions:cursor-position',
+  activate: (
+    app: JupyterFrontEnd,
+    tracker: INotebookTracker,
+    positionModel: IPositionModel
+  ) => {
+    let previousWidget: NotebookPanel | null = null;
+
+    const provider = (widget: Widget | null) => {
+      let editor: CodeEditor.IEditor | null = null;
+      if (widget !== previousWidget) {
+        previousWidget?.content.activeCellChanged.disconnect(
+          positionModel.update
+        );
+
+        previousWidget = null;
+        if (widget && tracker.has(widget)) {
+          (widget as NotebookPanel).content.activeCellChanged.connect(
+            positionModel.update
+          );
+          editor = (widget as NotebookPanel).content.activeCell?.editor ?? null;
+          previousWidget = widget as NotebookPanel;
+        }
+      } else if (widget) {
+        editor = (widget as NotebookPanel).content.activeCell?.editor ?? null;
+      }
+      return editor;
+    };
+
+    positionModel.addEditorProvider(provider);
+  },
+  requires: [INotebookTracker, IPositionModel],
+  autoStart: true
+};
+
+/**
  * Export the plugins as default.
  */
 const plugins: JupyterFrontEndPlugin<any>[] = [
@@ -679,7 +765,9 @@ const plugins: JupyterFrontEndPlugin<any>[] = [
   logNotebookOutput,
   clonedOutputsPlugin,
   codeConsolePlugin,
-  copyOutputPlugin
+  copyOutputPlugin,
+  kernelStatus,
+  lineColStatus
 ];
 export default plugins;
 
@@ -915,7 +1003,7 @@ function activateClonedOutputs(
   };
 
   commands.addCommand(CommandIDs.createOutputView, {
-    label: trans.__('Create New View for Output'),
+    label: trans.__('Create New View for Cell Output'),
     execute: async args => {
       let cell: CodeCell | undefined;
       let current: NotebookPanel | undefined | null;
@@ -1354,13 +1442,33 @@ function activateNotebookHandler(
       observedBottomMargin: settings.get('observedBottomMargin')
         .composite as string,
       maxNumberOutputs: settings.get('maxNumberOutputs').composite as number,
+      showEditorForReadOnlyMarkdown: settings.get(
+        'showEditorForReadOnlyMarkdown'
+      ).composite as boolean,
       disableDocumentWideUndoRedo: settings.get(
         'experimentalDisableDocumentWideUndoRedo'
       ).composite as boolean,
       renderingLayout: settings.get('renderingLayout').composite as
         | 'default'
-        | 'side-by-side'
+        | 'side-by-side',
+      sideBySideLeftMarginOverride: settings.get('sideBySideLeftMarginOverride')
+        .composite as string,
+      sideBySideRightMarginOverride: settings.get(
+        'sideBySideRightMarginOverride'
+      ).composite as string
     };
+    const sideBySideMarginStyle = `.jp-mod-sideBySide.jp-Notebook .jp-Notebook-cell { 
+      margin-left: ${factory.notebookConfig.sideBySideLeftMarginOverride} !important;
+      margin-right: ${factory.notebookConfig.sideBySideRightMarginOverride} !important;`;
+    const sideBySideMarginTag = document.getElementById(SIDE_BY_SIDE_STYLE_ID);
+    if (sideBySideMarginTag) {
+      sideBySideMarginTag.innerText = sideBySideMarginStyle;
+    } else {
+      document.head.insertAdjacentHTML(
+        'beforeend',
+        `<style id="${SIDE_BY_SIDE_STYLE_ID}">${sideBySideMarginStyle}}</style>`
+      );
+    }
     factory.shutdownOnClose = settings.get('kernelShutdown')
       .composite as boolean;
 
@@ -1708,7 +1816,8 @@ function addCommands(
     isEnabled
   });
   commands.addCommand(CommandIDs.restartClear, {
-    label: trans.__('Restart Kernel and Clear All Outputs…'),
+    label: trans.__('Restart Kernel and Clear Outputs of All Cells…'),
+    caption: trans.__('Restart the kernel and clear all outputs of all cells'),
     execute: async () => {
       const restarted: boolean = await commands.execute(CommandIDs.restart, {
         activate: false
@@ -1750,7 +1859,8 @@ function addCommands(
     isEnabled
   });
   commands.addCommand(CommandIDs.clearAllOutputs, {
-    label: trans.__('Clear All Outputs'),
+    label: trans.__('Clear Outputs of All Cells'),
+    caption: trans.__('Clear all outputs of all cells'),
     execute: args => {
       const current = getCurrent(tracker, shell, args);
 
@@ -1761,7 +1871,7 @@ function addCommands(
     isEnabled
   });
   commands.addCommand(CommandIDs.clearOutputs, {
-    label: trans.__('Clear Outputs'),
+    label: trans.__('Clear Cell Output'),
     caption: trans.__('Clear outputs for the selected cells'),
     execute: args => {
       const current = getCurrent(tracker, shell, args);
@@ -1980,6 +2090,54 @@ function addCommands(
 
       if (current) {
         return NotebookActions.selectBelow(current.content);
+      }
+    },
+    isEnabled
+  });
+  commands.addCommand(CommandIDs.insertHeadingAbove, {
+    label: trans.__('Insert Heading Above Current Heading'),
+    execute: args => {
+      const current = getCurrent(tracker, shell, args);
+
+      if (current) {
+        return NotebookActions.insertSameLevelHeadingAbove(current.content);
+      }
+    },
+    isEnabled
+  });
+  commands.addCommand(CommandIDs.insertHeadingBelow, {
+    label: trans.__('Insert Heading Below Current Heading'),
+    execute: args => {
+      const current = getCurrent(tracker, shell, args);
+
+      if (current) {
+        return NotebookActions.insertSameLevelHeadingBelow(current.content);
+      }
+    },
+    isEnabled
+  });
+  commands.addCommand(CommandIDs.selectHeadingAboveOrCollapse, {
+    label: trans.__('Select Heading Above or Collapse Heading'),
+    execute: args => {
+      const current = getCurrent(tracker, shell, args);
+
+      if (current) {
+        return NotebookActions.selectHeadingAboveOrCollapseHeading(
+          current.content
+        );
+      }
+    },
+    isEnabled
+  });
+  commands.addCommand(CommandIDs.selectHeadingBelowOrExpand, {
+    label: trans.__('Select Heading Below or Expand Heading'),
+    execute: args => {
+      const current = getCurrent(tracker, shell, args);
+
+      if (current) {
+        return NotebookActions.selectHeadingBelowOrExpandHeading(
+          current.content
+        );
       }
     },
     isEnabled
@@ -2452,11 +2610,11 @@ function addCommands(
     isEnabled: isEnabledAndHeadingSelected
   });
   commands.addCommand(CommandIDs.collapseAllCmd, {
-    label: 'Collapse All Cells',
+    label: 'Collapse All Headings',
     execute: args => {
       const current = getCurrent(tracker, shell, args);
       if (current) {
-        return NotebookActions.collapseAll(current.content);
+        return NotebookActions.collapseAllHeadings(current.content);
       }
     }
   });
@@ -2539,6 +2697,10 @@ function populatePalette(
     CommandIDs.insertBelow,
     CommandIDs.selectAbove,
     CommandIDs.selectBelow,
+    CommandIDs.selectHeadingAboveOrCollapse,
+    CommandIDs.selectHeadingBelowOrExpand,
+    CommandIDs.insertHeadingAbove,
+    CommandIDs.insertHeadingBelow,
     CommandIDs.extendAbove,
     CommandIDs.extendTop,
     CommandIDs.extendBelow,

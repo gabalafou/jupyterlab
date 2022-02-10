@@ -17,6 +17,11 @@ API breaking changes
 Here is a list of JupyterLab npm packages that encountered API changes and therefore have
 bumped their major version (following semver convention):
 
+- ``@jupyterlab/completer`` from 3.x to 4.x
+   Major version bumped following the removal of ``ICompletionManager`` token and the replacement
+   of ``ICompletableAttributes`` interface by ``ICompletionProvider``. To create a completer provider
+   for JupyterLab, users need to implement the interface ``ICompletionProvider`` and then register
+   this provider with ``ICompletionProviderManager`` token.
 - ``@jupyterlab/ui-components`` from 3.x to 4.x
    Major version bumped following removal of Blueprint JS dependency. Extensions using proxied
    components like ``Checkbox``, ``Select`` or ``Intent`` will need to import them explicitly
@@ -30,20 +35,45 @@ bumped their major version (following semver convention):
    given and allow a shell that meets the ``ILabShell`` interface.
    As a consequence, all other ``@jupyterlab/`` packages have their major version bumped too.
    See https://github.com/jupyterlab/jupyterlab/pull/11537 for more details.
-- ``@jupyterlab/toc:plugin`` renamed ``@jupyterlab/toc-extension:registry``
+- ``@jupyterlab/toc`` from 3.x to 4.x
+   ``@jupyterlab/toc:plugin`` renamed ``@jupyterlab/toc-extension:registry``
    This may impact application configuration (for instance if the plugin was disabled).
+   The namespace ``TableOfContentsRegistry`` has been renamed ``ITableOfContentsRegistry``.
+- ``@jupyterlab/console`` from 3.x to 4.x
+   The type of ``IConsoleHistory.sessionContext`` has been updated to ``ISessionContext | null`` instead of ``ISessionContext``.
+   This might break the compilation of plugins accessing the ``sessionContext`` from a ``ConsoleHistory``,
+   in particular those with the strict null checks enabled.
 - ``@jupyterlab/notebook`` from 3.x to 4.x
-   The ``NotebookPanel._onSave`` method is now ``private``.
+   * The ``NotebookPanel._onSave`` method is now ``private``.
+   * ``NotebookActions.collapseAll`` method renamed to ``NotebookActions.collapseAllHeadings``.
+   * Command ``Collapsible_Headings:Toggle_Collapse`` renamed to ``notebook:toggle-heading-collapse``.
+   * Command ``Collapsible_Headings:Collapse_All`` renamed to ``notebook:collapse-all-headings``.
+   * Command ``Collapsible_Headings:Expand_All`` renamed to ``notebook:expand-all-headings``.
 - ``@jupyterlab/shared-models`` from 3.x to 4.x
    The ``createCellFromType`` function has been renamed to ``createCellModelFromSharedType``
 - ``@jupyterlab/buildutils`` from 3.x to 4.x
    The ``create-theme`` script has been removed. If you want to create a new theme extension, you
    should use the `Theme Cookiecutter <https://github.com/jupyterlab/theme-cookiecutter>`_ instead.
    The ``add-sibling`` script has been removed. Check out :ref:`source_dev_workflow` instead.
+- ``@jupyterlab/statusbar`` from 3.x to 4.x
+  Setting ``@jupyterlab/statusbar-extension:plugin . startMode`` moved to ``@jupyterlab/application-extension:shell . startMode``
+  Plugin ``@jupyterlab/statusbar-extension:mode-switch`` renamed to ``@jupyterlab/application-extension:mode-switch``
+  Plugin ``@jupyterlab/statusbar-extension:kernel-status`` renamed to ``@jupyterlab/apputils-extension:kernel-status``
+  Plugin ``@jupyterlab/statusbar-extension:running-sessions-status`` renamed to ``@jupyterlab/apputils-extension:running-sessions-status``
+  Plugin ``@jupyterlab/statusbar-extension:line-col-status`` renamed to ``@jupyterlab/codemirror-extension:line-col-status``
+  ``HoverBox`` component moved from ``@jupyterlab/apputils`` to ``@jupyterlab/ui-components``.
 - TypeScript 4.5 update
    As a result of the update to TypeScript 4.5, a couple of interfaces have had their definitions changed.
    The ``anchor`` parameter of ``HoverBox.IOptions`` is now a ``DOMRect`` instead of ``ClientRect``.
    The ``CodeEditor.ICoordinate`` interface now extends ``DOMRectReadOnly`` instead of ``JSONObject, ClientRect``.
+
+Extension Development Changes
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- The ``externalExtensions`` field in the ``dev_mode/package.json`` file corresponding to the ``@jupyterlab/application-top``
+  ``private`` package has now been removed in ``4.0``. If you were using this field to develop source extensions against
+  a development build of JupyterLab, you should instead switch to the federated extensions system (via the ``--extensions-in-dev-mode`` flag)
+  or to using the ``--splice-source`` option. See :ref:`prebuilt_dev_workflow` and :ref:`source_dev_workflow` for more information.
 
 JupyterLab 3.0 to 3.1
 ---------------------

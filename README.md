@@ -16,10 +16,9 @@
 [![GitHub](https://img.shields.io/badge/issue_tracking-github-blue.svg)](https://github.com/jupyterlab/jupyterlab/issues)
 [![Discourse](https://img.shields.io/badge/help_forum-discourse-blue.svg)](https://discourse.jupyter.org/c/jupyterlab)
 [![Gitter](https://img.shields.io/badge/social_chat-gitter-blue.svg)](https://gitter.im/jupyterlab/jupyterlab)
+[![Gitpod](https://img.shields.io/badge/gitpod_editor-open-blue.svg)](https://gitpod.io/#https://github.com/jupyterlab/jupyterlab)
 
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jupyterlab/jupyterlab-demo/7390762294552deb550b486928646705bbb24333?urlpath=lab/tree/demo)
-
-[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/jupyterlab/jupyterlab)
 
 An extensible environment for interactive and reproducible computing, based on the
 Jupyter Notebook and Architecture. [Currently ready for users.](https://blog.jupyter.org/jupyterlab-is-ready-for-users-5a6f039b8906)
@@ -64,7 +63,7 @@ If you use [conda](https://docs.conda.io/en/latest/), [mamba](https://mamba.read
   ```shell
   pip install jupyterlab
   ```
-  If installing using `pip install --user`, you must add the user-level `bin` directory to your `PATH` environment variable in order to launch `jupyter lab`. If you are using a Unix derivative (FreeBSD, GNU / Linux, OS X), you can achieve this by using `export PATH="$HOME/.local/bin:$PATH"` command.
+  If installing using `pip install --user`, you must add the user-level `bin` directory to your `PATH` environment variable in order to launch `jupyter lab`. If you are using a Unix derivative (e.g., FreeBSD, GNU/Linux, macOS), you can do this by running `export PATH="$HOME/.local/bin:$PATH"`. If you are using a macOS version that comes with Python 2, run `pip3` instead of `pip`.
 
 For more detailed instructions, consult the [installation guide](http://jupyterlab.readthedocs.io/en/latest/getting_started/installation.html). Project installation instructions from the git sources are available in the [contributor documentation](CONTRIBUTING.md).
 
@@ -137,7 +136,7 @@ JupyterLab is part of [Project Jupyter](http://jupyter.org/) and is developed by
 
 JupyterLab's current maintainers are listed in alphabetical order, with affiliation, and main areas of contribution:
 
-- Mehmet Bektas, Splunk (general development, extensions).
+- Mehmet Bektas, Netflix (general development, extensions).
 - Alex Bozarth, IBM (general development, extensions).
 - Eric Charles, Datalayer, (general development, extensions).
 - Frédéric Collonval, QuantStack (general development, extensions).

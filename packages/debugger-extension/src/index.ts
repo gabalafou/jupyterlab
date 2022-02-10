@@ -325,14 +325,13 @@ const sources: JupyterFrontEndPlugin<IDebugger.ISources> = {
 const variables: JupyterFrontEndPlugin<void> = {
   id: '@jupyterlab/debugger-extension:variables',
   autoStart: true,
-  requires: [IDebugger, IDebuggerHandler, ITranslator, IDebuggerSidebar],
+  requires: [IDebugger, IDebuggerHandler, ITranslator],
   optional: [IThemeManager, IRenderMimeRegistry],
   activate: (
     app: JupyterFrontEnd,
     service: IDebugger,
     handler: Debugger.Handler,
     translator: ITranslator,
-    sidebar: IDebugger.ISidebar,
     themeManager: IThemeManager | null,
     rendermime: IRenderMimeRegistry | null
   ) => {
@@ -353,7 +352,7 @@ const variables: JupyterFrontEndPlugin<void> = {
       isEnabled: args =>
         !!service.session?.isStarted &&
         (args.variableReference ??
-          sidebar.variables.latestSelection?.variablesReference ??
+          service.model.variables.selectedVariable?.variablesReference ??
           0) > 0,
       execute: async args => {
         let { variableReference, name } = args as {
@@ -363,10 +362,10 @@ const variables: JupyterFrontEndPlugin<void> = {
 
         if (!variableReference) {
           variableReference =
-            sidebar.variables.latestSelection?.variablesReference;
+            service.model.variables.selectedVariable?.variablesReference;
         }
         if (!name) {
-          name = sidebar.variables.latestSelection?.name;
+          name = service.model.variables.selectedVariable?.name;
         }
 
         const id = `jp-debugger-variable-${name}`;
@@ -425,7 +424,7 @@ const variables: JupyterFrontEndPlugin<void> = {
         };
 
         if (!name) {
-          name = sidebar.variables.latestSelection?.name;
+          name = service.model.variables.selectedVariable?.name;
         }
         if (!frameId) {
           frameId = service.model.callstack.frame?.id;
@@ -441,7 +440,10 @@ const variables: JupyterFrontEndPlugin<void> = {
           return;
         }
 
-        const id = `jp-debugger-variable-mime-${name}`;
+        const id = `jp-debugger-variable-mime-${name}-${service.session?.connection?.path.replace(
+          '/',
+          '-'
+        )}`;
         if (
           !name || // Name is mandatory
           trackerMime.find(widget => widget.id === id) || // Widget already exists
@@ -450,20 +452,34 @@ const variables: JupyterFrontEndPlugin<void> = {
           return;
         }
 
+        const variablesModel = service.model.variables;
+
         const widget = new Debugger.VariableRenderer({
-          dataLoader: service.inspectRichVariable(name, frameId),
-          rendermime: activeRendermime
+          dataLoader: () => service.inspectRichVariable(name!, frameId),
+          rendermime: activeRendermime,
+          translator
         });
-        widget.addClass('jp-DebuggerVariables');
+        widget.addClass('jp-DebuggerRichVariable');
         widget.id = id;
         widget.title.icon = Debugger.Icons.variableIcon;
-        widget.title.label = `${service.session?.connection?.name} - ${name}`;
+        widget.title.label = `${name} - ${service.session?.connection?.name}`;
+        widget.title.caption = `${name} - ${service.session?.connection?.path}`;
         void trackerMime.add(widget);
         const disposeWidget = () => {
           widget.dispose();
-          service.model.variables.changed.disconnect(disposeWidget);
+          variablesModel.changed.disconnect(refreshWidget);
+          activeWidget?.disposed.disconnect(disposeWidget);
         };
-        service.model.variables.changed.connect(disposeWidget);
+        const refreshWidget = () => {
+          // Refresh the widget only if the active element is the same.
+          if (handler.activeWidget === activeWidget) {
+            widget.refresh();
+          }
+        };
+        widget.disposed.connect(disposeWidget);
+        variablesModel.changed.connect(refreshWidget);
+        activeWidget?.disposed.connect(disposeWidget);
+
         shell.add(widget, 'main', {
           mode: trackerMime.currentWidget ? 'split-right' : 'split-bottom',
           activate: false
@@ -503,9 +519,15 @@ const sidebar: JupyterFrontEndPlugin<IDebugger.ISidebar> = {
       evaluate: CommandIDs.evaluate
     };
 
+    const breakpointsCommands = {
+      registry: commands,
+      pause: CommandIDs.pause
+    };
+
     const sidebar = new Debugger.Sidebar({
       service,
       callstackCommands,
+      breakpointsCommands,
       editorServices,
       themeManager,
       translator
@@ -521,6 +543,9 @@ const sidebar: JupyterFrontEndPlugin<IDebugger.ISidebar> = {
         if (kernel && filters[kernel]) {
           sidebar.variables.filter = new Set<string>(filters[kernel]);
         }
+        const kernelSourcesFilter = setting.get('defaultKernelSourcesFilter')
+          .composite as string;
+        sidebar.kernelSources.filter = kernelSourcesFilter;
       };
       updateSettings();
       setting.changed.connect(updateSettings);
@@ -695,6 +720,28 @@ const main: JupyterFrontEndPlugin<void> = {
       }
     });
 
+    commands.addCommand(CommandIDs.pause, {
+      label: service.isPausingOnExceptions
+        ? trans.__('Disable pausing on exceptions')
+        : trans.__('Enable pausing on exceptions'),
+      caption: trans.__('Enable / Disable pausing on exceptions'),
+      className: 'jp-PauseOnExceptions',
+      icon: Debugger.Icons.pauseOnExceptionsIcon,
+      isToggled: () => {
+        return service.isPausingOnExceptions;
+      },
+      isEnabled: () => {
+        return !!service.isStarted;
+      },
+      isVisible: () => {
+        return service.pauseOnExceptionsIsValid();
+      },
+      execute: async () => {
+        await service.pauseOnExceptions(!service.isPausingOnExceptions);
+        commands.notifyCommandChanged();
+      }
+    });
+
     service.eventMessage.connect((_, event): void => {
       commands.notifyCommandChanged();
       if (labShell && event.event === 'initialized') {
@@ -730,7 +777,8 @@ const main: JupyterFrontEndPlugin<void> = {
         CommandIDs.next,
         CommandIDs.stepIn,
         CommandIDs.stepOut,
-        CommandIDs.evaluate
+        CommandIDs.evaluate,
+        CommandIDs.pause
       ].forEach(command => {
         palette.addItem({ command, category });
       });
@@ -760,7 +808,7 @@ const main: JupyterFrontEndPlugin<void> = {
           });
       };
 
-      const onCurrentSourceOpened = (
+      const onSourceOpened = (
         _: IDebugger.Model.ISources | null,
         source: IDebugger.Source,
         breakpoint?: IDebugger.IBreakpoint
@@ -818,15 +866,27 @@ const main: JupyterFrontEndPlugin<void> = {
         }
       };
 
+      const onKernelSourceOpened = (
+        _: IDebugger.Model.IKernelSources | null,
+        source: IDebugger.Source,
+        breakpoint?: IDebugger.IBreakpoint
+      ): void => {
+        if (!source) {
+          return;
+        }
+        onSourceOpened(null, source, breakpoint);
+      };
+
       model.callstack.currentFrameChanged.connect(onCurrentFrameChanged);
-      model.sources.currentSourceOpened.connect(onCurrentSourceOpened);
+      model.sources.currentSourceOpened.connect(onSourceOpened);
+      model.kernelSources.kernelSourceOpened.connect(onKernelSourceOpened);
       model.breakpoints.clicked.connect(async (_, breakpoint) => {
         const path = breakpoint.source?.path;
         const source = await service.getSource({
           sourceReference: 0,
           path
         });
-        onCurrentSourceOpened(null, source, breakpoint);
+        onSourceOpened(null, source, breakpoint);
       });
     }
   }

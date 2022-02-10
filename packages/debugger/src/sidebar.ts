@@ -17,6 +17,8 @@ import { Callstack as CallstackPanel } from './panels/callstack';
 
 import { Sources as SourcesPanel } from './panels/sources';
 
+import { KernelSources as KernelSourcesPanel } from './panels/kernelSources';
+
 import { Variables as VariablesPanel } from './panels/variables';
 
 import { IDebugger } from './tokens';
@@ -24,7 +26,7 @@ import { IDebugger } from './tokens';
 /**
  * A debugger sidebar.
  */
-export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
+export class DebuggerSidebar extends SidePanel {
   /**
    * Instantiate a new Debugger.Sidebar
    *
@@ -39,6 +41,7 @@ export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
 
     const {
       callstackCommands,
+      breakpointsCommands,
       editorServices,
       service,
       themeManager
@@ -61,6 +64,7 @@ export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
 
     this.breakpoints = new BreakpointsPanel({
       service,
+      commands: breakpointsCommands,
       model: model.breakpoints,
       translator
     });
@@ -69,6 +73,12 @@ export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
       model: model.sources,
       service,
       editorServices,
+      translator
+    });
+
+    this.kernelSources = new KernelSourcesPanel({
+      model: model.kernelSources,
+      service,
       translator
     });
 
@@ -85,6 +95,7 @@ export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
     this.addWidget(this.callstack);
     this.addWidget(this.breakpoints);
     this.addWidget(this.sources);
+    this.addWidget(this.kernelSources);
   }
 
   /**
@@ -106,6 +117,8 @@ export class DebuggerSidebar extends SidePanel implements IDebugger.ISidebar {
    * The sources widget.
    */
   readonly sources: SourcesPanel;
+
+  readonly kernelSources: KernelSourcesPanel;
 }
 
 /**
@@ -125,6 +138,12 @@ export namespace DebuggerSidebar {
      * The callstack toolbar commands.
      */
     callstackCommands: CallstackPanel.ICommands;
+
+    /**
+     * The callstack toolbar commands.
+     */
+    breakpointsCommands: BreakpointsPanel.ICommands;
+
     /**
      * The editor services.
      */
