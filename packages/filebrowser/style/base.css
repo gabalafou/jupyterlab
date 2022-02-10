@@ -215,11 +215,31 @@
 .jp-DirListing-item {
   display: flex;
   flex-direction: row;
-  padding: 4px 12px;
+  align-items: center;
+  padding-right: 12px;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+
+.hit-area {
+  padding: 4px;
+}
+.hit-area {
+  visibility: hidden;
+}
+.hit-area.visible {
+  visibility: visible;
+}
+.jp-DirListing-item:hover .hit-area,
+.jp-DirListing-item:focus-within .hit-area,
+.jp-DirListing-item.jp-mod-selected .hit-area {
+  visibility: visible;
+}
+
+.jp-DirListing-item:focus-within {
+  outline: -webkit-focus-ring-color auto 1px;
 }
 
 .jp-DirListing-item[data-is-dot] {
