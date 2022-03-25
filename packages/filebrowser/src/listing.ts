@@ -795,29 +795,28 @@ export class DirListing extends Widget {
       node.classList.remove(SELECTED_CLASS);
       node.classList.remove(RUNNING_CLASS);
       node.classList.remove(CUT_CLASS);
+      if (renderer.getCheckboxNode) {
+        // Uncheck each file checkbox
+        const checkbox = renderer.getCheckboxNode(node);
+        checkbox.checked = false;
+      }
     });
 
-    // Uncheck all of the file listing checkboxes
-    content
-      .querySelectorAll('input[type=checkbox]')
-      .forEach((checkbox: HTMLInputElement) => {
-        checkbox.checked = false;
-      });
-
     // Put the check-all checkbox in the header into the correct state
-    const checkAllCheckbox = this.headerNode.querySelector(
-      'input[type=checkbox]'
-    ) as HTMLInputElement;
-    const totalSelected = Object.keys(this.selection).length;
-    const allSelected = totalSelected === items.length;
-    const someSelected = !allSelected && totalSelected > 0;
-    checkAllCheckbox.checked = allSelected;
-    checkAllCheckbox.indeterminate = someSelected;
-    // Stash the state in data attributes so we can access them in the click
-    // handler (because in the click handler, checkbox.checked and
-    // checkbox.indeterminate do not hold the previous but the next value).
-    checkAllCheckbox.dataset.checked = String(allSelected);
-    checkAllCheckbox.dataset.indeterminate = String(someSelected);
+    if (renderer.getCheckboxNode) {
+      const checkAllCheckbox = renderer.getCheckboxNode(this.headerNode);
+      const totalSelected = Object.keys(this.selection).length;
+      const allSelected = totalSelected === items.length;
+      const someSelected = !allSelected && totalSelected > 0;
+      checkAllCheckbox.checked = allSelected;
+      checkAllCheckbox.indeterminate = someSelected;
+      // Stash the state in data attributes so we can access them in the click
+      // handler (because in the click handler, checkbox.checked and
+      // checkbox.indeterminate do not hold the previous value; they hold the
+      // next value).
+      checkAllCheckbox.dataset.checked = String(allSelected);
+      checkAllCheckbox.dataset.indeterminate = String(someSelected);
+    }
 
     // Add extra classes to item nodes based on widget state.
     items.forEach((item, i) => {
@@ -905,14 +904,16 @@ export class DirListing extends Widget {
   }
 
   /**
-   * Should we consider the event to be targeting the checkbox?
+   * Would this click (or other event) hit the checkbox by default?
    */
-  protected isTargetCheckbox(event: Event): boolean {
-    return (
-      // Yes if click (or other event) was on the checkbox input,
-      (event.target as HTMLInputElement).type === 'checkbox' ||
-      // or if click was on the label element that contains the checkbox.
-      (event.target as HTMLElement).classList.contains(CHECKBOX_WRAPPER_CLASS)
+  protected triggersCheckbox(event: Event): boolean {
+    const target = event.target as HTMLInputElement;
+    return Boolean(
+      target &&
+        // Yes if click (or other event) was on the checkbox element itself, or
+        (target.type === 'checkbox' ||
+          // if click was on the checkbox's label wrapper
+          target.classList.contains(CHECKBOX_WRAPPER_CLASS))
     );
   }
 
@@ -923,9 +924,10 @@ export class DirListing extends Widget {
     const target = event.target as HTMLElement;
 
     const header = this.headerNode;
+    const renderer = this._renderer;
     if (header.contains(target)) {
-      if (this.isTargetCheckbox(event)) {
-        const checkbox = header.querySelector('input')!;
+      if (renderer.getCheckboxNode && this.triggersCheckbox(event)) {
+        const checkbox = renderer.getCheckboxNode(header);
         const previouslyUnchecked =
           checkbox.dataset.indeterminate === 'false' &&
           checkbox.dataset.checked === 'false';
@@ -1165,7 +1167,7 @@ export class DirListing extends Widget {
     // Do nothing if the double click is on a checkbox. Otherwise a rapid
     // check-uncheck on the checkbox next to a folder will cause the folder to
     // open, which is probably not what the user intended.
-    if (this.isTargetCheckbox(event)) {
+    if (this.triggersCheckbox(event)) {
       return;
     }
 
@@ -1455,7 +1457,7 @@ export class DirListing extends Widget {
     const path = items[index].path;
     const selected = Object.keys(this.selection);
 
-    const wasItemSelectedViaCheckbox = this.isTargetCheckbox(event);
+    const wasItemSelectedViaCheckbox = this.triggersCheckbox(event);
 
     // Handle toggling.
     if (
@@ -1476,7 +1478,6 @@ export class DirListing extends Widget {
       // Handle a 'soft' selection
     } else if (path in this.selection && selected.length > 1) {
       // try
-      console.log(path);
       this._softSelection = path;
 
       // Default to selecting the only the item.
@@ -1645,7 +1646,7 @@ export class DirListing extends Widget {
             }
             if (this._inRename) {
               // No need to catch because `newName` will always exit.
-              void this.selectItemByName(newName, true);
+              void this.selectItemByName(newName);
             }
             this._inRename = false;
             return newName;
@@ -1673,7 +1674,6 @@ export class DirListing extends Widget {
     if (!keepExisting && focus) {
       this._focusSelectedFile(index);
     }
-    this._softSelection = '';
     this.update();
   }
 
@@ -1908,6 +1908,16 @@ export namespace DirListing {
     getNameNode(node: HTMLElement): HTMLElement;
 
     /**
+     * Get the checkbox input element node.
+     *
+     * @param node A node created by [[createItemNode]] or
+     * [[createHeaderItemNode]]
+     *
+     * @returns The checkbox node.
+     */
+    getCheckboxNode?: (node: HTMLElement) => HTMLInputElement;
+
+    /**
      * Create an appropriate drag image for an item.
      *
      * @param node - A node created by [[createItemNode]].
@@ -1957,7 +1967,9 @@ export namespace DirListing {
     ): void {
       translator = translator || nullTranslator;
       const trans = translator.load('jupyterlab');
-      const checkbox = this.createCheckboxNode({ alwaysVisible: true });
+      const checkboxWrapper = this.createCheckboxWrapperNode({
+        alwaysVisible: true
+      });
       const name = this.createHeaderItemNode(trans.__('Name'));
       const narrow = document.createElement('div');
       const modified = this.createHeaderItemNode(trans.__('Last Modified'));
@@ -1967,7 +1979,7 @@ export namespace DirListing {
       narrow.classList.add(NARROW_ID_CLASS);
       narrow.textContent = '...';
 
-      node.appendChild(checkbox);
+      node.appendChild(checkboxWrapper);
       node.appendChild(name);
       node.appendChild(narrow);
       node.appendChild(modified);
@@ -2065,14 +2077,14 @@ export namespace DirListing {
       hiddenColumns?: Set<DirListing.ToggleableColumn>
     ): HTMLElement {
       const node = document.createElement('li');
-      const checkbox = this.createCheckboxNode();
+      const checkboxWrapper = this.createCheckboxWrapperNode();
       const icon = document.createElement('span');
       const text = document.createElement('span');
       const modified = document.createElement('span');
       icon.className = ITEM_ICON_CLASS;
       text.className = ITEM_TEXT_CLASS;
       modified.className = ITEM_MODIFIED_CLASS;
-      node.appendChild(checkbox);
+      node.appendChild(checkboxWrapper);
       node.appendChild(icon);
       node.appendChild(text);
       node.appendChild(modified);
@@ -2091,7 +2103,17 @@ export namespace DirListing {
       return node;
     }
 
-    createCheckboxNode(options?: { alwaysVisible: boolean }): HTMLElement {
+    /**
+     * Creates a node containing a checkbox.
+     *
+     * @param [options]
+     * @params options.alwaysVisible Should the checkbox be visible even when
+     * not hovered?
+     * @returns A new DOM node that contains a checkbox.
+     */
+    createCheckboxWrapperNode(options?: {
+      alwaysVisible: boolean;
+    }): HTMLElement {
       // Wrap the checkbox in a label element in order to increase its hit area.
       const labelWrapper = document.createElement('label');
       labelWrapper.classList.add(CHECKBOX_WRAPPER_CLASS);
@@ -2219,6 +2241,20 @@ export namespace DirListing {
      */
     getNameNode(node: HTMLElement): HTMLElement {
       return DOMUtils.findElement(node, ITEM_TEXT_CLASS);
+    }
+
+    /**
+     * Get the checkbox input element node.
+     *
+     * @param node A node created by [[createItemNode]] or
+     * [[createHeaderItemNode]]
+     *
+     * @returns The checkbox node.
+     */
+    getCheckboxNode(node: HTMLElement): HTMLInputElement {
+      return node.querySelector(
+        `.${CHECKBOX_WRAPPER_CLASS} input[type=checkbox]`
+      ) as HTMLInputElement;
     }
 
     /**
@@ -2438,7 +2474,8 @@ namespace Private {
   }
 
   /**
-   * An event handler that just prevents the default.
+   * An event handler that just prevents the event's default action from
+   * happening (such as checking a checkbox after a click).
    */
   export function preventDefault(event: Event): void {
     event.preventDefault();
