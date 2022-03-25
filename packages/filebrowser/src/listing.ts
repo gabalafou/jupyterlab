@@ -1477,7 +1477,6 @@ export class DirListing extends Widget {
 
       // Handle a 'soft' selection
     } else if (path in this.selection && selected.length > 1) {
-      // try
       this._softSelection = path;
 
       // Default to selecting the only the item.
@@ -1978,7 +1977,6 @@ export namespace DirListing {
       modified.classList.add(MODIFIED_ID_CLASS);
       narrow.classList.add(NARROW_ID_CLASS);
       narrow.textContent = '...';
-
       node.appendChild(checkboxWrapper);
       node.appendChild(name);
       node.appendChild(narrow);
