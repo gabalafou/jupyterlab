@@ -96,8 +96,8 @@ const ITEM_ICON_CLASS = 'jp-DirListing-itemIcon';
 const ITEM_MODIFIED_CLASS = 'jp-DirListing-itemModified';
 
 /**
- * The class name added to the label element that wraps listing item checkboxes
- * and the check-all checkbox.
+ * The class name added to the label element that wraps each item's checkbox and
+ * the header's check-all checkbox.
  */
 const CHECKBOX_WRAPPER_CLASS = 'jp-DirListing-checkboxWrapper';
 
@@ -830,14 +830,15 @@ export class DirListing extends Widget {
         this._hiddenColumns
       );
       if (this.selection[item.path]) {
-        const checkbox = node.querySelector(
-          'input[type=checkbox]'
-        ) as HTMLInputElement;
-        checkbox.checked = true;
         node.classList.add(SELECTED_CLASS);
 
         if (this._isCut && this._model.path === this._prevPath) {
           node.classList.add(CUT_CLASS);
+        }
+
+        if (renderer.getCheckboxNode) {
+          const checkbox = renderer.getCheckboxNode(node);
+          checkbox.checked = true;
         }
       }
 
@@ -1164,9 +1165,9 @@ export class DirListing extends Widget {
       return;
     }
 
-    // Do nothing if the double click is on a checkbox. Otherwise a rapid
+    // Do nothing if the double click is on a checkbox. (Otherwise a rapid
     // check-uncheck on the checkbox next to a folder will cause the folder to
-    // open, which is probably not what the user intended.
+    // open, which is probably not what the user intended.)
     if (this.triggersCheckbox(event)) {
       return;
     }
