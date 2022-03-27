@@ -1166,7 +1166,7 @@ export class DirListing extends Widget {
     }
 
     // Do nothing if the double click is on a checkbox. (Otherwise a rapid
-    // check-uncheck on the checkbox next to a file or file will cause the it to
+    // check-uncheck on the checkbox next to a file or folder will cause it to
     // open, which is probably not what the user intended.)
     if (this.triggersCheckbox(event)) {
       return;
