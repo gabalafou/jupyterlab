@@ -532,7 +532,7 @@ export const ContentsManagerMock = jest.fn<Contents.IManager, []>(() => {
             if (
               // If file path is under this directory, add it to contents array.
               PathExt.dirname(fileModel.path) == model.path &&
-              // (Unless it's this directory.)
+              // But the directory should exclude itself from the contents array.
               fileModel !== model
             ) {
               content.push(fileModel);
