@@ -905,7 +905,7 @@ export class DirListing extends Widget {
   }
 
   /**
-   * Would this click (or other event) hit the checkbox by default?
+   * Would this click (or other event type) hit the checkbox by default?
    */
   protected triggersCheckbox(event: Event): boolean {
     const target = event.target as HTMLInputElement;
@@ -1166,7 +1166,7 @@ export class DirListing extends Widget {
     }
 
     // Do nothing if the double click is on a checkbox. (Otherwise a rapid
-    // check-uncheck on the checkbox next to a folder will cause the folder to
+    // check-uncheck on the checkbox next to a file or file will cause the it to
     // open, which is probably not what the user intended.)
     if (this.triggersCheckbox(event)) {
       return;
