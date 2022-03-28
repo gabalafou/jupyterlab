@@ -2105,6 +2105,12 @@ export namespace DirListing {
     /**
      * Creates a node containing a checkbox.
      *
+     * We wrap the checkbox in a label element in order to increase its hit
+     * area. This is because the padding of the checkbox itself cannot be
+     * increased via CSS, as the CSS/form compatibility table at the following
+     * url from MDN shows:
+     * https://developer.mozilla.org/en-US/docs/Learn/Forms/Property_compatibility_table_for_form_controls#check_boxes_and_radio_buttons
+     *
      * @param [options]
      * @params options.alwaysVisible Should the checkbox be visible even when
      * not hovered?

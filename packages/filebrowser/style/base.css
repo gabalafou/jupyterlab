@@ -239,7 +239,6 @@
     visibility: hidden;
   }
   .jp-DirListing-item:hover .jp-DirListing-checkboxWrapper,
-  .jp-DirListing-item:focus-within .jp-DirListing-checkboxWrapper,
   .jp-DirListing-item.jp-mod-selected .jp-DirListing-checkboxWrapper {
     visibility: visible;
   }
