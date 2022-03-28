@@ -232,8 +232,8 @@
   visibility: visible;
 }
 
-/* For devices that support hovering, hide checkboxes (unless hovering,
- * focussing, selected...) */
+/* For devices that support hovering, hide checkboxes (unless hovered,
+selected...) */
 @media (hover: hover) {
   .jp-DirListing-checkboxWrapper {
     visibility: hidden;
