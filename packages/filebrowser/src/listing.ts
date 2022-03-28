@@ -907,15 +907,15 @@ export class DirListing extends Widget {
   /**
    * Would this click (or other event type) hit the checkbox by default?
    */
-  protected triggersCheckbox(event: Event): boolean {
-    const target = event.target as HTMLInputElement;
-    return Boolean(
-      target &&
-        // Yes if click (or other event) was on the checkbox element itself, or
-        (target.type === 'checkbox' ||
-          // if click was on the checkbox's label wrapper
-          target.classList.contains(CHECKBOX_WRAPPER_CLASS))
-    );
+  protected isWithinCheckboxHitArea(event: Event): boolean {
+    let element: HTMLElement | null = event.target as HTMLElement;
+    while (element) {
+      if (element.classList.contains(CHECKBOX_WRAPPER_CLASS)) {
+        return true;
+      }
+      element = element.parentElement;
+    }
+    return false;
   }
 
   /**
@@ -927,7 +927,7 @@ export class DirListing extends Widget {
     const header = this.headerNode;
     const renderer = this._renderer;
     if (header.contains(target)) {
-      if (renderer.getCheckboxNode && this.triggersCheckbox(event)) {
+      if (renderer.getCheckboxNode && this.isWithinCheckboxHitArea(event)) {
         const checkbox = renderer.getCheckboxNode(header);
         const previouslyUnchecked =
           checkbox.dataset.indeterminate === 'false' &&
@@ -1168,7 +1168,7 @@ export class DirListing extends Widget {
     // Do nothing if the double click is on a checkbox. (Otherwise a rapid
     // check-uncheck on the checkbox will cause the adjacent file/folder to
     // open, which is probably not what the user intended.)
-    if (this.triggersCheckbox(event)) {
+    if (this.isWithinCheckboxHitArea(event)) {
       return;
     }
 
@@ -1458,7 +1458,7 @@ export class DirListing extends Widget {
     const path = items[index].path;
     const selected = Object.keys(this.selection);
 
-    const wasItemSelectedViaCheckbox = this.triggersCheckbox(event);
+    const wasItemSelectedViaCheckbox = this.isWithinCheckboxHitArea(event);
 
     // Handle toggling.
     if (
