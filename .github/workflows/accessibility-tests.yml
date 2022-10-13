@@ -1,0 +1,27 @@
+name: Trigger Accessibility Tests
+
+on:
+  pull_request_review:
+
+jobs:
+  print-info:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "github.event.pull_request.head.sha = ${{ github.event.pull_request.head.sha }}"
+
+  accessibility-tests:
+    name: Execute accessibility tests
+    if: github.event_name == 'pull_request_review' && contains(github.event.review.body, 'please run accessibility tests')
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Execute accessibility tests
+        id: a11y-tests
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ github.event.pull_request.head.sha }}
