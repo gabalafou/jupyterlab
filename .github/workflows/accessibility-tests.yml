@@ -16,13 +16,7 @@ jobs:
   accessibility-tests:
     name: Execute accessibility tests
     if: github.event.issue.pull_request && github.event.comment.body == 'please run accessibility tests'
-
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Execute accessibility tests
-        id: a11y-tests
-        uses: gabalafou/jupyter-a11y-testing/.github/workflows/jlab-a11y-test@main
-        with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.event.issue.pull_request.head.sha }}
+    uses: gabalafou/jupyter-a11y-testing/.github/workflows/jlab-a11y-test.yml@main
+    with:
+      repository: ${{ github.repository }}
+      ref: ${{ github.event.issue.pull_request.head.sha }}
