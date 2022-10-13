@@ -24,4 +24,4 @@ jobs:
         uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
         with:
           repository: ${{ github.repository }}
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.issue.pull_request.head.sha }}
