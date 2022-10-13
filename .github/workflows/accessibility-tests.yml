@@ -5,12 +5,13 @@ on:
 
 jobs:
   print-info:
+    if: github.event.issue.pull_request
     runs-on: ubuntu-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - run: echo "#️⃣ github.event.issue.pull_request.head.sha = ${{ github.event.issue.pull_request.head.sha }}"
+      - run: echo "#️⃣ github.event.issue.pull_request = ${{ github.event.issue.pull_request }}"
 
   accessibility-tests:
     name: Execute accessibility tests
@@ -21,7 +22,7 @@ jobs:
     steps:
       - name: Execute accessibility tests
         id: a11y-tests
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        uses: gabalafou/jupyter-a11y-testing/.github/workflows/jlab-a11y-test@main
         with:
           repository: ${{ github.repository }}
           ref: ${{ github.event.issue.pull_request.head.sha }}
