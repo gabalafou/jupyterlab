@@ -6,19 +6,31 @@ on:
 jobs:
   print-info:
     if: github.event.issue.pull_request
+    needs: pr_sha_from_number
     runs-on: ubuntu-latest
     steps:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - run: echo "#️⃣ github = ${{ toJSON(github) }}"
+      - run: echo "☎️ GitHub API Request, outputs.data = ${{ needs.pr_sha_from_number.outputs.data }}"
+      - run: echo "#️⃣ PR head sha? = ${{ fromJSON(needs.pr_sha_from_number.outputs.data).head.sha }}"
 
-  accessibility-tests:
+  pr_sha_from_number:
+    if: github.event.issue.pull_request
     runs-on: ubuntu-latest
     steps:
-      - name: Execute accessibility tests
-        if: github.event.issue.pull_request && github.event.comment.body == 'please run accessibility tests'
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+      - name: GitHub API Request
+        uses: octokit/request-action@v2.1.0
         with:
-          repository: ${{ github.repository }}
-          ref: ${{ github.event.issue.pull_request.head.sha }}
+          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  accessibility-tests:
+    name: Execute accessibility tests
+    if: github.event.issue.pull_request && github.event.comment.body == 'please run accessibility tests'
+    needs: pr_sha_from_number
+    uses: gabalafou/jupyter-a11y-testing/.github/workflows/jlab-a11y-test.yml@main
+    with:
+      repository: ${{ github.repository }}
+      ref: ${{ fromJSON(needs.pr_sha_from_number.outputs.data).head.sha }}
