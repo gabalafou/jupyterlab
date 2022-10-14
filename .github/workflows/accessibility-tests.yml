@@ -12,7 +12,7 @@ jobs:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - run: echo "☎️ GitHub API Request, outputs.data = ${{ needs.pr_sha_from_number.outputs.data }}"
+      - run: echo outputs.data ${{ needs.pr_sha_from_number.outputs.data }}
       - run: echo "#️⃣ PR head sha? = ${{ fromJSON(needs.pr_sha_from_number.outputs.data).head.sha }}"
 
   pr_sha_from_number:
