@@ -22,14 +22,11 @@ jobs:
     steps:
       - id: get_pr
         name: GitHub API Request
-        uses: octokit/request-action@v2.1.0
+        uses: octokit/request-action@v2.1.7
         with:
           route: GET /repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Echo outputs.data
-        run: |
-          echo '${{ steps.get_pr.outputs.data }}'
 
   accessibility-tests:
     name: Execute accessibility tests
