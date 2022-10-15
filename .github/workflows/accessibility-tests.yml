@@ -35,4 +35,4 @@ jobs:
     uses: gabalafou/jupyter-a11y-testing/.github/workflows/jlab-a11y-test.yml@main
     with:
       repository: ${{ github.repository }}
-      ref: ${{ fromJSON(needs.pr_sha_from_number.outputs.data).head.sha }}
+      ref: ${{ needs.pr_sha_from_number.outputs.sha }}
