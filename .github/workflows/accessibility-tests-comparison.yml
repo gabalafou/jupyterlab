@@ -36,7 +36,7 @@ jobs:
     needs: pr_sha_from_number
     steps:
       - name: Write Intro to Job summary
-      - run: |
+        run: |
           echo "Hi, it looks like you requested a comparison of" >> $GITHUB_STEPS_SUMMARY
           echo "accessibility tests for PR #${{ github.event.issue.number }}." >> $GITHUB_STEPS_SUMMARY
           echo "The tests will first be run against the base branch of the PR." >> $GITHUB_STEPS_SUMMARY
