@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       head_sha: ${{ fromJSON(steps.get_pr.outputs.data).head.sha }}
-      base_sha: ${{ fromJSON(steps.get_pr.outputs.date).base.sha }}
+      base_sha: ${{ fromJSON(steps.get_pr.outputs.data).base.sha }}
     steps:
       - id: get_pr
         name: GitHub API Request
