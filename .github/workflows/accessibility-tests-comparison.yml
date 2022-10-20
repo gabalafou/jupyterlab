@@ -12,7 +12,8 @@ jobs:
       - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
       - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
       - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-      - run: echo "outputs.sha ${{ needs.pr_sha_from_number.outputs.sha }}"
+      - run: echo "outputs.head_sha ${{ needs.pr_sha_from_number.outputs.head_sha }}"
+      - run: echo "outputs.head_sha ${{ needs.pr_sha_from_number.outputs.base_sha }}"
 
   pr_sha_from_number:
     if: github.event.issue.pull_request
@@ -42,28 +43,31 @@ jobs:
           echo "The tests will first be run against the base branch of the PR." >> $GITHUB_STEP_SUMMARY
           echo "Then they will be run against the head commit of the PR." >> $GITHUB_STEP_SUMMARY
           echo "This should allow you to see that this PR fixes an accessibility" >> $GITHUB_STEP_SUMMARY
-          echo "that has a corresponding regression test." >> $GITHUB_STEP_SUMMARY
+          echo "issue that has a corresponding regression test." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "The following test results are against the base, whose commit SHA is:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ needs.pr_sha_from_number.outputs.base_sha }}"
-          echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.pr_sha_from_number.outputs.base_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
         uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
         with:
           repository: ${{ github.repository }}
-          ref: ${{ needs.pr_sha_from_number.base_sha }}
+          ref: ${{ needs.pr_sha_from_number.outputs.base_sha }}
 
       - name: Intro second run
         run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "The following test results are against this PR, whose head commit SHA is:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ needs.pr_sha_from_number.outputs.head_sha }}"
-          echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.pr_sha_from_number.outputs.head_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
         uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
         with:
           repository: ${{ github.repository }}
-          ref: ${{ needs.pr_sha_from_number.head_sha }}
+          ref: ${{ needs.pr_sha_from_number.outputs.head_sha }}
