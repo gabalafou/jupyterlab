@@ -52,7 +52,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.base_sha }}
@@ -67,7 +67,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.head_sha }}
