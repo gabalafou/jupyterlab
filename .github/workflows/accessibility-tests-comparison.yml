@@ -56,6 +56,7 @@ jobs:
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.base_sha }}
+          test_project: regression
 
       - name: Intro second run
         run: |
@@ -71,3 +72,4 @@ jobs:
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.head_sha }}
+          test_project: regression
