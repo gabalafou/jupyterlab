@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: pr_sha_from_number
     steps:
-      - name: Write Intro to Job summary
+      - name: Intro job summary
         run: |
           echo "Hi, it looks like you requested a comparison of" >> $GITHUB_STEP_SUMMARY
           echo "accessibility tests for PR #${{ github.event.issue.number }}." >> $GITHUB_STEP_SUMMARY
@@ -52,10 +52,11 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.base_sha }}
+          test_project: regression
 
       - name: Intro second run
         run: |
@@ -67,7 +68,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
       - name: Run accessibility tests against base branch
-        uses: gabalafou/jupyter-a11y-testing/.github/actions/jlab-a11y-test@main
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
         with:
           repository: ${{ github.repository }}
           ref: ${{ needs.pr_sha_from_number.outputs.head_sha }}
+          test_project: regression
