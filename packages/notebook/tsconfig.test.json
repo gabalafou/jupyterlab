@@ -42,9 +42,6 @@
       "path": "../settingregistry"
     },
     {
-      "path": "../shared-models"
-    },
-    {
       "path": "../statusbar"
     },
     {
@@ -60,7 +57,7 @@
       "path": "."
     },
     {
-      "path": "../../testutils"
+      "path": "../testing"
     }
   ]
 }

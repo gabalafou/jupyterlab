@@ -1,17 +1,11 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { init } from './utils';
-
-init();
-
 import { Session } from '@jupyterlab/services';
 
-import {
-  createSession,
-  JupyterServer,
-  signalToPromises
-} from '@jupyterlab/testutils';
+import { createSession } from '@jupyterlab/docregistry/lib/testutils';
+
+import { JupyterServer, signalToPromises } from '@jupyterlab/testing';
 
 import { find } from '@lumino/algorithm';
 
@@ -26,9 +20,8 @@ import { IDebugger } from '../src/tokens';
 const server = new JupyterServer();
 
 beforeAll(async () => {
-  jest.setTimeout(20000);
   await server.start();
-});
+}, 30000);
 
 afterAll(async () => {
   await server.shutdown();
@@ -183,14 +176,14 @@ describe('protocol', () => {
 
     // wait for the first stopped event
     await stoppedFuture.promise;
-  });
+  }, 30000);
 
   afterEach(async () => {
     await debugSession.stop();
     debugSession.dispose();
     await connection.shutdown();
     connection.dispose();
-  });
+  }, 30000);
 
   describe('#debugInfo', () => {
     it('should return the state of the current debug session', async () => {

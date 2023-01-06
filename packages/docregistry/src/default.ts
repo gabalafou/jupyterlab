@@ -7,11 +7,7 @@ import { Mode } from '@jupyterlab/codemirror';
 import { IChangedArgs, PathExt } from '@jupyterlab/coreutils';
 import { IObservableList } from '@jupyterlab/observables';
 import { Contents } from '@jupyterlab/services';
-import {
-  DocumentChange,
-  FileChange,
-  ISharedFile
-} from '@jupyterlab/shared-models';
+import { DocumentChange, FileChange, ISharedFile } from '@jupyter/ydoc';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import { PartialJSONValue } from '@lumino/coreutils';
 import { ISignal, Signal } from '@lumino/signaling';
@@ -28,10 +24,11 @@ export class DocumentModel
   /**
    * Construct a new document model.
    */
-  constructor(languagePreference?: string) {
+  constructor(languagePreference?: string, collaborationEnabled?: boolean) {
     super();
     this._defaultLang = languagePreference || '';
     this.sharedModel.changed.connect(this._onStateChanged, this);
+    this._collaborationEnabled = !!collaborationEnabled;
   }
 
   /**
@@ -100,6 +97,13 @@ export class DocumentModel
    */
   get defaultKernelLanguage(): string {
     return this._defaultLang;
+  }
+
+  /**
+   * Whether the model is collaborative or not.
+   */
+  get collaborative(): boolean {
+    return this._collaborationEnabled;
   }
 
   /**
@@ -189,12 +193,20 @@ export class DocumentModel
   private _readOnly = false;
   private _contentChanged = new Signal<this, void>(this);
   private _stateChanged = new Signal<this, IChangedArgs<any>>(this);
+  private _collaborationEnabled: boolean;
 }
 
 /**
  * An implementation of a model factory for text files.
  */
 export class TextModelFactory implements DocumentRegistry.CodeModelFactory {
+  /**
+   * Instantiates a TextModelFactory.
+   */
+  constructor(collaborative?: boolean) {
+    this._collaborative = collaborative ?? true;
+  }
+
   /**
    * The name of the model type.
    *
@@ -225,6 +237,13 @@ export class TextModelFactory implements DocumentRegistry.CodeModelFactory {
   }
 
   /**
+   * Whether the model is collaborative or not.
+   */
+  get collaborative(): boolean {
+    return this._collaborative;
+  }
+
+  /**
    * Get whether the model factory has been disposed.
    */
   get isDisposed(): boolean {
@@ -247,8 +266,12 @@ export class TextModelFactory implements DocumentRegistry.CodeModelFactory {
    *
    * @returns A new document model.
    */
-  createNew(languagePreference?: string): DocumentRegistry.ICodeModel {
-    return new DocumentModel(languagePreference);
+  createNew(
+    languagePreference?: string,
+    collaborationEnabled?: boolean
+  ): DocumentRegistry.ICodeModel {
+    const collaborative = collaborationEnabled && this.collaborative;
+    return new DocumentModel(languagePreference, collaborative);
   }
 
   /**
@@ -260,6 +283,7 @@ export class TextModelFactory implements DocumentRegistry.CodeModelFactory {
   }
 
   private _isDisposed = false;
+  private _collaborative: boolean;
 }
 
 /**

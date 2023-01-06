@@ -1,28 +1,24 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { IChangedArgs } from '@jupyterlab/coreutils';
-
-import {
-  CellModel,
-  CodeCellModel,
-  MarkdownCellModel,
-  RawCellModel
-} from '@jupyterlab/cells';
-
-import * as nbformat from '@jupyterlab/nbformat';
-
-import { OutputAreaModel } from '@jupyterlab/outputarea';
-
-import { NBTestUtils } from '@jupyterlab/testutils';
-import { JSONObject } from '@lumino/coreutils';
 import {
   createStandaloneCell,
   ISharedCodeCell,
   YCodeCell,
   YMarkdownCell,
   YRawCell
-} from '@jupyterlab/shared-models';
+} from '@jupyter/ydoc';
+import {
+  CellModel,
+  CodeCellModel,
+  MarkdownCellModel,
+  RawCellModel
+} from '@jupyterlab/cells';
+import { IChangedArgs } from '@jupyterlab/coreutils';
+import * as nbformat from '@jupyterlab/nbformat';
+import { OutputAreaModel } from '@jupyterlab/outputarea';
+import { DEFAULT_OUTPUTS } from '@jupyterlab/rendermime/lib/testutils';
+import { JSONObject } from '@lumino/coreutils';
 
 class TestModel extends CellModel {
   get type(): 'raw' {
@@ -154,7 +150,7 @@ describe('cells/model', () => {
 
       it('should update the trusted state of the output models', () => {
         const model = new CodeCellModel();
-        model.outputs.add(NBTestUtils.DEFAULT_OUTPUTS[0]);
+        model.outputs.add(DEFAULT_OUTPUTS[0]);
         expect(model.outputs.get(0).trusted).toBe(false);
         model.trusted = true;
         expect(model.outputs.get(0).trusted).toBe(true);

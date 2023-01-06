@@ -2,26 +2,26 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { ISessionContext, SessionContext } from '@jupyterlab/apputils';
+import { createSessionContext } from '@jupyterlab/apputils/lib/testutils';
 import { CodeCell, MarkdownCell, RawCell } from '@jupyterlab/cells';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { CellType, IMimeBundle } from '@jupyterlab/nbformat';
-import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
-import { ISharedCodeCell } from '@jupyterlab/shared-models';
-import {
-  acceptDialog,
-  createSessionContext,
-  dismissDialog,
-  sleep
-} from '@jupyterlab/testutils';
-import { JupyterServer } from '@jupyterlab/testutils/lib/start_jupyter_server';
-import { JSONArray, JSONObject, UUID } from '@lumino/coreutils';
 import {
   KernelError,
   Notebook,
   NotebookActions,
   NotebookModel,
   StaticNotebook
-} from '..';
+} from '@jupyterlab/notebook';
+import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
+import { ISharedCodeCell } from '@jupyter/ydoc';
+import {
+  acceptDialog,
+  dismissDialog,
+  JupyterServer,
+  sleep
+} from '@jupyterlab/testing';
+import { JSONArray, JSONObject, UUID } from '@lumino/coreutils';
 import * as utils from './utils';
 
 const ERROR_INPUT = 'a = foo';
@@ -31,9 +31,8 @@ const JUPYTER_CELL_MIME = 'application/vnd.jupyter.cells';
 const server = new JupyterServer();
 
 beforeAll(async () => {
-  jest.setTimeout(20000);
   await server.start();
-});
+}, 30000);
 
 afterAll(async () => {
   await server.shutdown();
@@ -48,7 +47,6 @@ describe('@jupyterlab/notebook', () => {
     let ipySessionContext: ISessionContext;
 
     beforeAll(async function () {
-      jest.setTimeout(20000);
       rendermime = utils.defaultRenderMime();
 
       async function createContext(options?: Partial<SessionContext.IOptions>) {
@@ -61,7 +59,7 @@ describe('@jupyterlab/notebook', () => {
         createContext(),
         createContext({ kernelPreference: { name: 'ipython' } })
       ]);
-    });
+    }, 30000);
 
     beforeEach(() => {
       widget = new Notebook({

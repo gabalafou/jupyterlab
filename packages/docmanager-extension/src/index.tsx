@@ -24,7 +24,7 @@ import {
   showErrorMessage,
   UseSignal
 } from '@jupyterlab/apputils';
-import { IChangedArgs, PageConfig, PathExt, Time } from '@jupyterlab/coreutils';
+import { IChangedArgs, PathExt, Time } from '@jupyterlab/coreutils';
 import {
   DocumentManager,
   IDocumentManager,
@@ -191,7 +191,6 @@ const manager: JupyterFrontEndPlugin<IDocumentManager> = {
       setBusy: (status && (() => status.setBusy())) ?? undefined,
       sessionDialogs: sessionDialogs || undefined,
       translator: translator ?? nullTranslator,
-      collaborative: true,
       docProviderFactory: docProviderFactory ?? undefined,
       isConnectedCallback: () => {
         if (info) {
@@ -245,6 +244,10 @@ const docManagerPlugin: JupyterFrontEndPlugin<void> = {
         autosave === true || autosave === false ? autosave : true;
       app.commands.notifyCommandChanged(CommandIDs.toggleAutosave);
 
+      const confirmClosingDocument = settings.get('confirmClosingDocument')
+        .composite as boolean;
+      docManager.confirmClosingDocument = confirmClosingDocument ?? true;
+
       // Handle autosave interval
       const autosaveInterval = settings.get('autosaveInterval').composite as
         | number
@@ -296,6 +299,29 @@ const docManagerPlugin: JupyterFrontEndPlugin<void> = {
       .then(([settings]) => {
         settings.changed.connect(onSettingsUpdated);
         onSettingsUpdated(settings);
+
+        const onStateChanged = (
+          sender: IDocumentManager,
+          change: IChangedArgs<any>
+        ): void => {
+          if (
+            [
+              'autosave',
+              'autosaveInterval',
+              'confirmClosingDocument',
+              'lastModifiedCheckMargin',
+              'renameUntitledFileOnSave'
+            ].includes(change.name) &&
+            settings.get(change.name).composite !== change.newValue
+          ) {
+            settings.set(change.name, change.newValue).catch(reason => {
+              console.error(
+                `Failed to set the setting '${change.name}':\n${reason}`
+              );
+            });
+          }
+        };
+        docManager.stateChanged.connect(onStateChanged);
       })
       .catch((reason: Error) => {
         console.error(reason.message);
@@ -612,11 +638,7 @@ function addCommands(
       return false;
     }
     const context = docManager.contextForWidget(currentWidget);
-    return !!(
-      context &&
-      context.contentsModel &&
-      context.contentsModel.writable
-    );
+    return !!context?.contentsModel?.writable;
   };
 
   // If inside a rich application like JupyterLab, add additional functionality.
@@ -787,13 +809,16 @@ function addCommands(
   });
 
   const caption = () => {
-    if (PageConfig.getOption('collaborative') == 'true') {
-      return trans.__(
-        'In collaborative mode, the document is saved automatically after every change'
-      );
-    } else {
-      return trans.__('Save and create checkpoint');
+    if (shell.currentWidget) {
+      const context = docManager.contextForWidget(shell.currentWidget);
+      if (context?.model.collaborative) {
+        return trans.__(
+          'In collaborative mode, the document is saved automatically after every change'
+        );
+      }
     }
+
+    return trans.__('Save and create checkpoint');
   };
 
   const saveInProgress = new WeakSet<DocumentRegistry.Context>();
@@ -843,7 +868,7 @@ function addCommands(
               text: oldName,
               selectionRange: oldName.length - PathExt.extname(oldName).length,
               checkbox: {
-                label: trans.__("Don't ask me again."),
+                label: trans.__('Do not ask me again.'),
                 caption: trans.__(
                   'If checked, you will not be asked to rename future untitled files when saving them.'
                 )

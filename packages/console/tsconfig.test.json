@@ -27,9 +27,6 @@
       "path": "../services"
     },
     {
-      "path": "../shared-models"
-    },
-    {
       "path": "../translation"
     },
     {
@@ -39,7 +36,7 @@
       "path": "."
     },
     {
-      "path": "../../testutils"
+      "path": "../testing"
     }
   ]
 }

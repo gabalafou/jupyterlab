@@ -7,7 +7,7 @@ import {
   IJupyterLabPageFixture,
   test
 } from '@jupyterlab/galata';
-import { positionMouse, setSidebarWidth } from './utils';
+import { positionMouseOver, setSidebarWidth } from './utils';
 
 test.use({
   autoGoto: false,
@@ -28,7 +28,7 @@ test.describe('Debugger', () => {
 
     expect(
       await page.screenshot({
-        clip: { x: 1050, y: 62, width: 190, height: 28 }
+        clip: { x: 1030, y: 62, width: 210, height: 28 }
       })
     ).toMatchSnapshot('debugger_kernel.png');
   });
@@ -43,7 +43,7 @@ test.describe('Debugger', () => {
     await setSidebarWidth(page, 251, 'right');
 
     expect(
-      await page.screenshot({ clip: { y: 62, x: 800, width: 190, height: 28 } })
+      await page.screenshot({ clip: { y: 62, x: 780, width: 210, height: 28 } })
     ).toMatchSnapshot('debugger_activate.png');
   });
 
@@ -73,16 +73,21 @@ test.describe('Debugger', () => {
 
     await createNotebook(page);
 
+    const runButton = await page.waitForSelector(
+      '.jp-Toolbar-item >> [data-command="runmenu:run"]'
+    );
+    await runButton.hover();
+
     // Inject mouse pointer
     await page.evaluate(
       ([mouse]) => {
         document.body.insertAdjacentHTML('beforeend', mouse);
       },
-      [positionMouse({ x: 446, y: 80 })]
+      [await positionMouseOver(runButton)]
     );
 
     expect(
-      await page.screenshot({ clip: { y: 62, x: 400, width: 190, height: 80 } })
+      await page.screenshot({ clip: { y: 62, x: 400, width: 190, height: 60 } })
     ).toMatchSnapshot('debugger_run.png');
   });
 
@@ -117,7 +122,10 @@ test.describe('Debugger', () => {
 
     await createNotebook(page);
 
-    await page.click('[data-id="jp-debugger-sidebar"]');
+    const sidebar = await page.waitForSelector(
+      '[data-id="jp-debugger-sidebar"]'
+    );
+    await sidebar.click();
     await setSidebarWidth(page, 251, 'right');
 
     // Inject mouse pointer
@@ -125,7 +133,7 @@ test.describe('Debugger', () => {
       ([mouse]) => {
         document.body.insertAdjacentHTML('beforeend', mouse);
       },
-      [positionMouse({ x: 1240, y: 115 })]
+      [await positionMouseOver(sidebar, { left: 0.25 })]
     );
 
     expect(
@@ -152,12 +160,34 @@ test.describe('Debugger', () => {
     // Wait to be stopped on the breakpoint
     await page.debugger.waitForCallStack();
 
+    // Wait for the locals variables to be displayed
+    await expect(
+      page.locator('.jp-DebuggerVariables-toolbar select')
+    ).toHaveValue('Locals');
+
     expect(
       await page.screenshot({
         clip: { y: 58, x: 998, width: 280, height: 138 }
       })
     ).toMatchSnapshot('debugger_variables.png');
 
+    // Copy value to clipboard
+    await page
+      .locator('.jp-DebuggerVariables-body :text("b")')
+      .click({ button: 'right' });
+    await page.locator('.lm-Menu-itemLabel:text("Copy to Clipboard")').click();
+    expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('2');
+
+    // Copy value entry is disabled for variables with empty value
+    await page
+      .locator('.jp-DebuggerVariables-toolbar select')
+      .selectOption('Globals');
+    await page
+      .locator('.jp-DebuggerVariables-body :text("special variables")')
+      .click({ button: 'right' });
+    await expect(
+      page.locator('li.lm-Menu-item[data-command="debugger:copy-to-clipboard"]')
+    ).toHaveAttribute('aria-disabled', 'true');
     await page.click('button[title^=Continue]');
   });
 

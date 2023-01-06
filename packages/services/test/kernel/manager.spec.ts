@@ -1,31 +1,24 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import {
-  flakyIt as it,
-  JupyterServer,
-  sleep,
-  testEmission
-} from '@jupyterlab/testutils';
+import { JupyterServer, sleep, testEmission } from '@jupyterlab/testing';
 import { Kernel, KernelAPI, KernelManager } from '../../src';
 import { makeSettings } from '../utils';
 
-const server = new JupyterServer();
-
-beforeAll(async () => {
-  await server.start();
-});
-
-afterAll(async () => {
-  await server.shutdown();
-});
-
 describe('kernel/manager', () => {
   let kernel: Kernel.IModel;
+  let server: JupyterServer;
+
+  jest.retryTimes(3);
 
   beforeAll(async () => {
-    jest.setTimeout(20000);
+    server = new JupyterServer();
+    await server.start();
     kernel = await KernelAPI.startNew();
+  }, 30000);
+
+  afterAll(async () => {
+    await server.shutdown();
   });
 
   describe('KernelManager', () => {

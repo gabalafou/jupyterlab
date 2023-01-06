@@ -10,20 +10,17 @@ import {
 } from '@jupyterlab/apputils';
 import { ISettingRegistry, SettingRegistry } from '@jupyterlab/settingregistry';
 import { IDataConnector } from '@jupyterlab/statedb';
-import {
-  createSessionContext,
-  framePromise,
-  JupyterServer
-} from '@jupyterlab/testutils';
+import { framePromise, JupyterServer } from '@jupyterlab/testing';
 import { ITranslator } from '@jupyterlab/translation';
 import { JSONExt, PromiseDelegate } from '@lumino/coreutils';
 import { Widget } from '@lumino/widgets';
+import { createSessionContext } from '@jupyterlab/apputils/lib/testutils';
 
 const server = new JupyterServer();
 
 beforeAll(async () => {
   await server.start();
-});
+}, 30000);
 
 afterAll(async () => {
   await server.shutdown();

@@ -1,9 +1,10 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
+import { ISanitizer } from '@jupyterlab/apputils';
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { Session } from '@jupyterlab/services';
-import { SourceChange } from '@jupyterlab/shared-models';
+import { SourceChange } from '@jupyter/ydoc';
 import { Token } from '@lumino/coreutils';
 import { ISignal } from '@lumino/signaling';
 import { Widget } from '@lumino/widgets';
@@ -30,6 +31,11 @@ export interface ICompletionContext {
    * The session extracted from widget for convenience.
    */
   session?: Session.ISessionConnection | null;
+
+  /**
+   * The sanitizer used to sanitize untrusted html inputs.
+   */
+  sanitizer?: ISanitizer;
 }
 
 /**
@@ -79,7 +85,7 @@ export interface ICompletionProvider<
    * Given an incomplete (unresolved) completion item, resolve it by adding
    * all missing details, such as lazy-fetched documentation.
    *
-   * @param completion - the completion item to resolve
+   * @param completionItem - the completion item to resolve
    * @param context - The context of the completer
    * @param patch - The text which will be injected if the completion item is
    * selected.
@@ -147,7 +153,7 @@ export interface ICompletionProviderManager {
   activeProvidersChanged: ISignal<ICompletionProviderManager, void>;
 }
 
-export interface IConnectorProxy {
+export interface IProviderReconciliator {
   /**
    * Fetch response from multiple providers, If a provider can not return
    * the response for a completer request before timeout,
@@ -157,7 +163,7 @@ export interface IConnectorProxy {
    */
   fetch(
     request: CompletionHandler.IRequest
-  ): Promise<Array<CompletionHandler.ICompletionItemsReply | null>>;
+  ): Promise<CompletionHandler.ICompletionItemsReply | null>;
 
   /**
    * Check if completer should make request to fetch completion responses

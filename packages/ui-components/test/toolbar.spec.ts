@@ -11,7 +11,7 @@ import {
   Toolbar,
   ToolbarButton
 } from '@jupyterlab/ui-components';
-import { framePromise, JupyterServer } from '@jupyterlab/testutils';
+import { framePromise, JupyterServer } from '@jupyterlab/testing';
 import { CommandRegistry } from '@lumino/commands';
 import { ReadonlyPartialJSONObject } from '@lumino/coreutils';
 import { PanelLayout, Widget } from '@lumino/widgets';
@@ -21,7 +21,7 @@ const server = new JupyterServer();
 
 beforeAll(async () => {
   await server.start();
-});
+}, 30000);
 
 afterAll(async () => {
   await server.shutdown();
@@ -124,9 +124,8 @@ describe('@jupyterlab/ui-components', () => {
     let widget: Toolbar<Widget>;
 
     beforeEach(async () => {
-      jest.setTimeout(20000);
       widget = new Toolbar();
-    });
+    }, 30000);
 
     afterEach(async () => {
       widget.dispose();

@@ -3,7 +3,7 @@
 
 import { CodeEditor } from '@jupyterlab/codeeditor';
 import { CodeMirrorEditor } from '@jupyterlab/codemirror';
-import { YFile } from '@jupyterlab/shared-models';
+import { YFile } from '@jupyter/ydoc';
 import { generate, simulate } from 'simulate-event';
 
 const UP_ARROW = 38;
@@ -78,22 +78,6 @@ describe('CodeMirrorEditor', () => {
       const uuid = 'foo';
       editor = new LogFileEditor({ model, host, uuid });
       expect(editor.uuid).toBe('foo');
-    });
-  });
-
-  describe('#selectionStyle', () => {
-    it('should be the selection style of the editor', () => {
-      expect(editor.selectionStyle).toEqual(CodeEditor.defaultSelectionStyle);
-    });
-
-    it('should be settable', () => {
-      const style = {
-        className: 'foo',
-        displayName: 'bar',
-        color: 'black'
-      };
-      editor.selectionStyle = style;
-      expect(editor.selectionStyle).toEqual(style);
     });
   });
 
@@ -434,6 +418,81 @@ describe('CodeMirrorEditor', () => {
       expect(editor.methods).toEqual(expect.not.arrayContaining(['onKeydown']));
       editor.editor.contentDOM.dispatchEvent(event);
       expect(editor.methods).toEqual(expect.arrayContaining(['onKeydown']));
+    });
+  });
+
+  describe('#getTokenAt()', () => {
+    it('should return innermost token', () => {
+      editor.setOption('mode', 'text/x-python');
+      model.sharedModel.setSource('foo = "a"\nbar = 1');
+      expect(editor.getTokenAt(1)).toStrictEqual({
+        offset: 0,
+        type: 'VariableName',
+        value: 'foo'
+      });
+
+      expect(editor.getTokenAt(11)).toStrictEqual({
+        offset: 10,
+        type: 'VariableName',
+        value: 'bar'
+      });
+    });
+  });
+
+  describe('#getTokens()', () => {
+    it('should get a list of tokens', () => {
+      editor.setOption('mode', 'text/x-python');
+      model.sharedModel.setSource('foo = "a"\nbar = 1');
+      expect(editor.getTokens()).toStrictEqual([
+        {
+          offset: 0,
+          type: 'VariableName',
+          value: 'foo'
+        },
+        {
+          offset: 4,
+          type: 'AssignOp',
+          value: '='
+        },
+        {
+          offset: 6,
+          type: 'String',
+          value: '"a"'
+        },
+        {
+          offset: 10,
+          type: 'VariableName',
+          value: 'bar'
+        },
+        {
+          offset: 14,
+          type: 'AssignOp',
+          value: '='
+        },
+        {
+          offset: 16,
+          type: 'Number',
+          value: '1'
+        }
+      ]);
+    });
+  });
+
+  describe('#replaceSelection()', () => {
+    it('should set text in empty editor', () => {
+      model.sharedModel.setSource('');
+      editor.replaceSelection('text');
+      expect(model.sharedModel.source).toBe('text');
+      expect(editor.getSelection().end.column).toBe(4);
+    });
+
+    it('should replace from start to end of selection', () => {
+      model.sharedModel.setSource('axxc');
+      const start = { line: 0, column: 1 };
+      const end = { line: 0, column: 3 };
+      editor.setSelection({ start, end });
+      editor.replaceSelection('b');
+      expect(model.sharedModel.source).toBe('abc');
     });
   });
 });

@@ -16,23 +16,25 @@ import {
 import {
   acceptDialog,
   dismissDialog,
-  flakyIt as it,
   JupyterServer,
   testEmission
-} from '@jupyterlab/testutils';
+} from '@jupyterlab/testing';
 import { PromiseDelegate, UUID } from '@lumino/coreutils';
 
-const server = new JupyterServer();
-
-beforeAll(async () => {
-  await server.start();
-});
-
-afterAll(async () => {
-  await server.shutdown();
-});
-
 describe('@jupyterlab/apputils', () => {
+  let server: JupyterServer;
+
+  beforeAll(async () => {
+    server = new JupyterServer();
+    await server.start();
+  }, 30000);
+
+  afterAll(async () => {
+    await server.shutdown();
+  });
+
+  jest.retryTimes(3);
+
   describe('SessionContext', () => {
     let kernelManager: KernelManager;
     let sessionManager: SessionManager;
@@ -41,7 +43,6 @@ describe('@jupyterlab/apputils', () => {
     let sessionContext: SessionContext;
 
     beforeAll(async () => {
-      jest.setTimeout(20000);
       kernelManager = new KernelManager();
       sessionManager = new SessionManager({ kernelManager });
       specsManager = new KernelSpecManager();
@@ -50,7 +51,7 @@ describe('@jupyterlab/apputils', () => {
         kernelManager.ready,
         specsManager.ready
       ]);
-    });
+    }, 30000);
 
     beforeEach(async () => {
       Dialog.flush();

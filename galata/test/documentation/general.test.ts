@@ -2,7 +2,12 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { expect, galata, test } from '@jupyterlab/galata';
-import { generateArrow, positionMouse, setSidebarWidth } from './utils';
+import {
+  generateArrow,
+  positionMouse,
+  positionMouseOver,
+  setSidebarWidth
+} from './utils';
 
 test.use({
   autoGoto: false,
@@ -95,6 +100,10 @@ test.describe('General', () => {
 
     await page.dblclick('[aria-label="File Browser Section"] >> text=data');
 
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement).blur();
+    });
+
     expect(
       await page.screenshot({ clip: { y: 31, x: 0, width: 283, height: 400 } })
     ).toMatchSnapshot('interface_left.png');
@@ -108,16 +117,23 @@ test.describe('General', () => {
       }`
     });
 
-    await setSidebarWidth(page);
-
     await page.notebook.createNew();
     await page.click('[title="Property Inspector"]');
+    await setSidebarWidth(page, 251, 'right');
 
     expect(
       await page.screenshot({
         clip: { y: 32, x: 997, width: 283, height: 400 }
       })
     ).toMatchSnapshot('interface_right.png');
+
+    await page.click('.jp-PropertyInspector >> text=Common Tools');
+
+    expect(
+      await page.screenshot({
+        clip: { y: 32, x: 997, width: 283, height: 400 }
+      })
+    ).toMatchSnapshot('interface_right_common.png');
   });
 
   test('Open tabs', async ({ page }) => {
@@ -178,14 +194,24 @@ test.describe('General', () => {
 
     await page.click('text=File');
     await page.mouse.move(70, 40);
-    await page.click('ul[role="menu"] >> text=New');
+    const fileMenuNewItem = await page.waitForSelector(
+      'ul[role="menu"] >> text=New'
+    );
+    await fileMenuNewItem.click();
 
     // Inject mouse
     await page.evaluate(
       ([mouse]) => {
         document.body.insertAdjacentHTML('beforeend', mouse);
       },
-      [positionMouse({ x: 35, y: 35 })]
+      [
+        await positionMouseOver(fileMenuNewItem, {
+          left: 0,
+          // small negative offset to place the cursor before "New"
+          offsetLeft: -17,
+          top: 0.5
+        })
+      ]
     );
 
     expect(
@@ -211,14 +237,13 @@ test.describe('General', () => {
     await page.hover('text=Copy Shareable Link');
 
     const itemHandle = await page.$('text=Copy Shareable Link');
-    const itemBBox = await itemHandle.boundingBox();
 
     // Inject mouse
     await page.evaluate(
       ([mouse]) => {
         document.body.insertAdjacentHTML('beforeend', mouse);
       },
-      [positionMouse({ x: 260, y: itemBBox.y + itemBBox.height * 0.5 })]
+      [await positionMouseOver(itemHandle, { top: 0.5, left: 0.55 })]
     );
 
     expect(
@@ -337,6 +362,44 @@ test.describe('General', () => {
     expect(await page.screenshot()).toMatchSnapshot('notebook_ui.png', {
       threshold: 0.3
     });
+  });
+
+  test('Heading anchor', async ({ page }, testInfo) => {
+    await page.goto();
+    await setSidebarWidth(page);
+
+    // Open Data.ipynb
+    await page.dblclick(
+      '[aria-label="File Browser Section"] >> text=notebooks'
+    );
+    await page.dblclick('text=Data.ipynb');
+
+    const heading = await page.waitForSelector(
+      'h2[id="Open-a-CSV-file-using-Pandas"]'
+    );
+    const anchor = await heading.$('text=¶');
+    await heading.hover();
+
+    // Get parent cell which includes the heading
+    const cell = await heading.evaluateHandle(node => node.closest('.jp-Cell'));
+
+    // Inject mouse
+    await page.evaluate(
+      ([mouse]) => {
+        document.body.insertAdjacentHTML('beforeend', mouse);
+      },
+      [
+        await positionMouseOver(anchor, {
+          left: 1,
+          offsetLeft: 5,
+          top: 0.25
+        })
+      ]
+    );
+
+    expect(await cell.screenshot()).toMatchSnapshot(
+      'notebook_heading_anchor_link.png'
+    );
   });
 
   test('Terminals', async ({ page }) => {

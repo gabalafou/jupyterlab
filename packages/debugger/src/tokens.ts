@@ -5,7 +5,7 @@ import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
 
 import { KernelMessage, Session } from '@jupyterlab/services';
 
-import { ISharedText } from '@jupyterlab/shared-models';
+import { ISharedText } from '@jupyter/ydoc';
 
 import { ReadonlyJSONObject, Token } from '@lumino/coreutils';
 
@@ -160,6 +160,11 @@ export interface IDebugger {
    * Precondition: !isStarted
    */
   start(): Promise<void>;
+
+  /**
+   * Makes the current thread pause if possible.
+   */
+  pause(): Promise<void>;
 
   /**
    * Makes the current thread step in a function / method if possible.

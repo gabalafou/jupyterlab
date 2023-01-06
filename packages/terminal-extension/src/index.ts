@@ -11,6 +11,7 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import {
+  Clipboard,
   ICommandPalette,
   IThemeManager,
   MainAreaWidget,
@@ -25,13 +26,20 @@ import { ITerminal, ITerminalTracker } from '@jupyterlab/terminal';
 // Name-only import so as to not trigger inclusion in main bundle
 import * as WidgetModuleType from '@jupyterlab/terminal/lib/widget';
 import { ITranslator } from '@jupyterlab/translation';
-import { terminalIcon } from '@jupyterlab/ui-components';
+import {
+  copyIcon,
+  pasteIcon,
+  refreshIcon,
+  terminalIcon
+} from '@jupyterlab/ui-components';
 import { Menu, Widget } from '@lumino/widgets';
 
 /**
  * The command IDs used by the terminal plugin.
  */
 namespace CommandIDs {
+  export const copy = 'terminal:copy';
+
   export const createNew = 'terminal:create-new';
 
   export const open = 'terminal:open';
@@ -41,6 +49,8 @@ namespace CommandIDs {
   export const increaseFont = 'terminal:increase-font';
 
   export const decreaseFont = 'terminal:decrease-font';
+
+  export const paste = 'terminal:paste';
 
   export const setTheme = 'terminal:set-theme';
 
@@ -279,20 +289,6 @@ function addRunningSessionManager(
   const trans = translator.load('jupyterlab');
   const manager = app.serviceManager.terminals;
 
-  managers.add({
-    name: trans.__('Terminals'),
-    running: () =>
-      Array.from(manager.running()).map(model => new RunningTerminal(model)),
-    shutdownAll: () => manager.shutdownAll(),
-    refreshRunning: () => manager.refreshRunning(),
-    runningChanged: manager.runningChanged,
-    shutdownLabel: trans.__('Shut Down'),
-    shutdownAllLabel: trans.__('Shut Down All'),
-    shutdownAllConfirmationText: trans.__(
-      'Are you sure you want to permanently shut down all running terminals?'
-    )
-  });
-
   class RunningTerminal implements IRunningSessions.IRunningItem {
     constructor(model: Terminal.IModel) {
       this._model = model;
@@ -312,6 +308,20 @@ function addRunningSessionManager(
 
     private _model: Terminal.IModel;
   }
+
+  managers.add({
+    name: trans.__('Terminals'),
+    running: () =>
+      Array.from(manager.running()).map(model => new RunningTerminal(model)),
+    shutdownAll: () => manager.shutdownAll(),
+    refreshRunning: () => manager.refreshRunning(),
+    runningChanged: manager.runningChanged,
+    shutdownLabel: trans.__('Shut Down'),
+    shutdownAllLabel: trans.__('Shut Down All'),
+    shutdownAllConfirmationText: trans.__(
+      'Are you sure you want to permanently shut down all running terminals?'
+    )
+  });
 }
 
 /**
@@ -326,6 +336,10 @@ export function addCommands(
 ): void {
   const trans = translator.load('jupyterlab');
   const { commands, serviceManager } = app;
+
+  const isEnabled = () =>
+    tracker.currentWidget !== null &&
+    tracker.currentWidget === app.shell.currentWidget;
 
   // Add terminal commands.
   commands.addCommand(CommandIDs.createNew, {
@@ -413,7 +427,71 @@ export function addCommands(
         Private.showErrorMessage(err);
       }
     },
-    isEnabled: () => tracker.currentWidget !== null
+    icon: args =>
+      args['isPalette']
+        ? undefined
+        : refreshIcon.bindprops({ stylesheet: 'menuItem' }),
+    isEnabled
+  });
+
+  /**
+   * Add copy command
+   */
+  commands.addCommand(CommandIDs.copy, {
+    execute: () => {
+      const widget = tracker.currentWidget?.content;
+
+      if (!widget) {
+        return;
+      }
+
+      const text = widget.getSelection();
+
+      if (text) {
+        Clipboard.copyToSystem(text);
+      }
+    },
+    isEnabled: () => {
+      if (!isEnabled()) {
+        return false;
+      }
+
+      const widget = tracker.currentWidget?.content;
+
+      if (!widget) {
+        return false;
+      }
+
+      // Enable command if there is a text selection in the terminal
+      return widget.hasSelection();
+    },
+    icon: copyIcon.bindprops({ stylesheet: 'menuItem' }),
+    label: trans.__('Copy')
+  });
+
+  /**
+   * Add paste command
+   */
+  commands.addCommand(CommandIDs.paste, {
+    execute: async () => {
+      const widget = tracker.currentWidget?.content;
+
+      if (!widget) {
+        return;
+      }
+
+      // Get data from clipboard
+      const clipboard = window.navigator.clipboard;
+      const clipboardData: string = await clipboard.readText();
+
+      if (clipboardData) {
+        // Paste data to the terminal
+        widget.paste(clipboardData);
+      }
+    },
+    isEnabled: () => Boolean(isEnabled() && tracker.currentWidget?.content),
+    icon: pasteIcon.bindprops({ stylesheet: 'menuItem' }),
+    label: trans.__('Paste')
   });
 
   commands.addCommand(CommandIDs.shutdown, {
@@ -427,7 +505,7 @@ export function addCommands(
       // The widget is automatically disposed upon session shutdown.
       return current.content.session.shutdown();
     },
-    isEnabled: () => tracker.currentWidget !== null
+    isEnabled
   });
 
   commands.addCommand(CommandIDs.increaseFont, {

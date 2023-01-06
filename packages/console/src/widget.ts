@@ -19,16 +19,14 @@ import * as nbformat from '@jupyterlab/nbformat';
 import { IObservableList, ObservableList } from '@jupyterlab/observables';
 import { IRenderMimeRegistry } from '@jupyterlab/rendermime';
 import { KernelMessage } from '@jupyterlab/services';
-import {
-  createStandaloneCell,
-  ISharedRawCell
-} from '@jupyterlab/shared-models';
+import { createStandaloneCell, ISharedRawCell } from '@jupyter/ydoc';
 import { JSONObject, MimeData } from '@lumino/coreutils';
 import { Drag } from '@lumino/dragdrop';
 import { Message } from '@lumino/messaging';
 import { ISignal, Signal } from '@lumino/signaling';
 import { Panel, PanelLayout, Widget } from '@lumino/widgets';
 import { ConsoleHistory, IConsoleHistory } from './history';
+import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 
 /**
  * The data attribute added to a widget that has an active kernel.
@@ -93,6 +91,7 @@ export class CodeConsole extends Widget {
    */
   constructor(options: CodeConsole.IOptions) {
     super();
+    this._translator = options.translator ?? nullTranslator;
     this.addClass(CONSOLE_CLASS);
     this.node.dataset[KERNEL_USER] = 'true';
     this.node.dataset[CODE_RUNNER] = 'true';
@@ -735,7 +734,8 @@ export class CodeConsole extends Widget {
       rendermime,
       contentFactory,
       editorConfig,
-      placeholder: false
+      placeholder: false,
+      translator: this._translator
     };
   }
 
@@ -843,6 +843,7 @@ export class CodeConsole extends Widget {
   } | null = null;
   private _drag: Drag | null = null;
   private _focusedCell: Cell | null = null;
+  private _translator: ITranslator;
 }
 
 /**
@@ -877,6 +878,11 @@ export namespace CodeConsole {
      * The service used to look up mime types.
      */
     mimeTypeService: IEditorMimeTypeService;
+
+    /**
+     * The application language translator.
+     */
+    translator?: ITranslator;
   }
 
   /**

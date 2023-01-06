@@ -3,8 +3,7 @@
 
 import { IChangedArgs } from '@jupyterlab/coreutils';
 import { IObservableMap, ObservableMap } from '@jupyterlab/observables';
-import * as models from '@jupyterlab/shared-models';
-import { ISharedText, YFile } from '@jupyterlab/shared-models';
+import { ISharedText, YFile } from '@jupyter/ydoc';
 import { ITranslator } from '@jupyterlab/translation';
 import { JSONObject } from '@lumino/coreutils';
 import { IDisposable } from '@lumino/disposable';
@@ -78,35 +77,6 @@ export namespace CodeEditor {
   }
 
   /**
-   * A selection style.
-   */
-  export interface ISelectionStyle extends JSONObject {
-    /**
-     * A class name added to a selection.
-     */
-    className: string;
-
-    /**
-     * A display name added to a selection.
-     */
-    displayName: string;
-
-    /**
-     * A color for UI elements.
-     */
-    color: string;
-  }
-
-  /**
-   * The default selection style.
-   */
-  export const defaultSelectionStyle: ISelectionStyle = {
-    className: '',
-    displayName: '',
-    color: 'black'
-  };
-
-  /**
    * A text selection.
    */
   export interface ITextSelection extends IRange {
@@ -114,11 +84,6 @@ export namespace CodeEditor {
      * The uuid of the text selection owner.
      */
     readonly uuid: string;
-
-    /**
-     * The style of this selection.
-     */
-    readonly style: ISelectionStyle;
   }
 
   /**
@@ -183,7 +148,7 @@ export namespace CodeEditor {
     /**
      * The shared model for the cell editor.
      */
-    readonly sharedModel: models.ISharedText;
+    readonly sharedModel: ISharedText;
   }
 
   /**
@@ -203,7 +168,7 @@ export namespace CodeEditor {
     /**
      * The shared model for the cell editor.
      */
-    readonly sharedModel: models.ISharedText;
+    readonly sharedModel: ISharedText;
 
     /**
      * A signal emitted when a mimetype changes.
@@ -352,11 +317,6 @@ export namespace CodeEditor {
      * A signal emitted when either the top or bottom edge is requested.
      */
     readonly edgeRequested: ISignal<IEditor, EdgeLocation>;
-
-    /**
-     * The default selection style for the editor.
-     */
-    selectionStyle: CodeEditor.ISelectionStyle;
 
     /**
      * The DOM node that hosts the editor.
@@ -671,11 +631,6 @@ export namespace CodeEditor {
      * The desired uuid for the editor.
      */
     uuid?: string;
-
-    /**
-     * The default selection style for the editor.
-     */
-    selectionStyle?: Partial<CodeEditor.ISelectionStyle>;
 
     /**
      * The configuration options for the editor.

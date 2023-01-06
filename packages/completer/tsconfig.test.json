@@ -18,9 +18,6 @@
       "path": "../services"
     },
     {
-      "path": "../shared-models"
-    },
-    {
       "path": "../statedb"
     },
     {
@@ -30,7 +27,7 @@
       "path": "."
     },
     {
-      "path": "../../testutils"
+      "path": "../testing"
     }
   ]
 }

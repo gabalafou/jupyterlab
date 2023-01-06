@@ -23,9 +23,16 @@ import { BaseManager, IManager as IBaseManager } from '../basemanager';
 const SERVICE_USER_URL = 'api/me';
 
 /**
+ * The service's ID.
+ * Used to uniquely identify the poll, and
+ * the item in local storage.
+ */
+const SERVICE_ID = '@jupyterlab/services:UserManager#user';
+
+/**
  * The user API service manager.
  */
-export class UserManager extends BaseManager implements UserManager.IManager {
+export class UserManager extends BaseManager implements User.IManager {
   private _isReady = false;
   private _ready: Promise<void>;
   private _pollSpecs: Poll;
@@ -67,7 +74,7 @@ export class UserManager extends BaseManager implements UserManager.IManager {
         backoff: true,
         max: 300 * 1000
       },
-      name: `@jupyterlab/services:UserManager#user`,
+      name: SERVICE_ID,
       standby: options.standby ?? 'when-hidden'
     });
 
@@ -173,11 +180,10 @@ export class UserManager extends BaseManager implements UserManager.IManager {
     // store the color and initials for the user
     // this info is not provided by the server
     const { localStorage } = window;
-    const data = localStorage.getItem(identity.username);
+    const data = localStorage.getItem(SERVICE_ID);
 
     if (data && (!identity.initials || !identity.color)) {
       const localUser = JSON.parse(data);
-      const identity = newUser.identity;
       identity.initials =
         identity.initials ||
         localUser.initials ||
@@ -189,7 +195,7 @@ export class UserManager extends BaseManager implements UserManager.IManager {
     if (!JSONExt.deepEqual(newUser, oldUser)) {
       this._identity = identity;
       this._permissions = newUser.permissions;
-      localStorage.setItem(identity.username, JSON.stringify(identity));
+      localStorage.setItem(SERVICE_ID, JSON.stringify(identity));
       this._userChanged.emit(newUser);
     }
   }
@@ -207,46 +213,6 @@ export namespace UserManager {
      * When the manager stops polling the API. Defaults to `when-hidden`.
      */
     standby?: Poll.Standby | (() => boolean | Poll.Standby);
-  }
-
-  /**
-   * Object which manages user's identity.
-   *
-   * #### Notes
-   * The manager is responsible for maintaining the state of the user.
-   */
-  export interface IManager extends IBaseManager {
-    /**
-     * A signal emitted when the user changes.
-     */
-    userChanged: ISignal<this, User.IUser>;
-
-    /**
-     * User's identity.
-     *
-     * #### Notes
-     * The value will be null until the manager is ready.
-     */
-    readonly identity: User.IIdentity | null;
-
-    /**
-     * User's permissions.
-     *
-     * #### Notes
-     * The value will be null until the manager is ready.
-     */
-    readonly permissions: ReadonlyJSONObject | null;
-
-    /**
-     * Force a refresh of user's identity from the server.
-     *
-     * @returns A promise that resolves when the identity is fetched.
-     *
-     * #### Notes
-     * This is intended to be called only in response to a user action,
-     * since the manager maintains its internal state.
-     */
-    refreshUser(): Promise<void>;
   }
 }
 
@@ -298,6 +264,46 @@ export namespace User {
      * The url to the user's image for the icon.
      */
     readonly avatar_url?: string;
+  }
+
+  /**
+   * Object which manages user's identity.
+   *
+   * #### Notes
+   * The manager is responsible for maintaining the state of the user.
+   */
+  export interface IManager extends IBaseManager {
+    /**
+     * A signal emitted when the user changes.
+     */
+    userChanged: ISignal<this, User.IUser>;
+
+    /**
+     * User's identity.
+     *
+     * #### Notes
+     * The value will be null until the manager is ready.
+     */
+    readonly identity: User.IIdentity | null;
+
+    /**
+     * User's permissions.
+     *
+     * #### Notes
+     * The value will be null until the manager is ready.
+     */
+    readonly permissions: ReadonlyJSONObject | null;
+
+    /**
+     * Force a refresh of user's identity from the server.
+     *
+     * @returns A promise that resolves when the identity is fetched.
+     *
+     * #### Notes
+     * This is intended to be called only in response to a user action,
+     * since the manager maintains its internal state.
+     */
+    refreshUser(): Promise<void>;
   }
 }
 

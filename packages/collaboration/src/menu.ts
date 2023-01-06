@@ -1,8 +1,8 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { caretDownIcon, userIcon } from '@jupyterlab/ui-components';
-import { User, UserManager } from '@jupyterlab/services';
+import { userIcon } from '@jupyterlab/ui-components';
+import { User } from '@jupyterlab/services';
 import { Menu, MenuBar } from '@lumino/widgets';
 import { h, VirtualElement } from '@lumino/virtualdom';
 
@@ -10,14 +10,14 @@ import { h, VirtualElement } from '@lumino/virtualdom';
  * Custom renderer for the user menu.
  */
 export class RendererUserMenu extends MenuBar.Renderer {
-  private _user: UserManager.IManager;
+  private _user: User.IManager;
 
   /**
    * Constructor of the class RendererUserMenu.
    *
    * @argument user Current user object.
    */
-  constructor(user: UserManager.IManager) {
+  constructor(user: User.IManager) {
     super();
     this._user = user;
   }
@@ -89,35 +89,12 @@ export class RendererUserMenu extends MenuBar.Renderer {
 }
 
 /**
+ * This menu does not contain anything but we keep it around in case someone uses it.
  * Custom lumino Menu for the user menu.
  */
 export class UserMenu extends Menu {
-  private _user: UserManager.IManager;
-
   constructor(options: UserMenu.IOptions) {
     super(options);
-    this._user = options.user;
-
-    this.title.label = '';
-    this.title.icon = caretDownIcon;
-    this.title.iconClass = 'jp-UserMenu-caretDownIcon';
-
-    this._user.ready
-      .then(() => {
-        this.title.label = this._user.identity!.display_name;
-      })
-      .catch(e => console.error(e));
-
-    this._user.userChanged.connect(this._updateLabel, this);
-  }
-
-  dispose() {
-    this._user.userChanged.disconnect(this._updateLabel, this);
-  }
-
-  private _updateLabel(sender: UserManager.IManager, user: User.IUser): void {
-    this.title.label = user.identity.display_name;
-    this.update();
   }
 }
 
@@ -132,6 +109,6 @@ export namespace UserMenu {
     /**
      * Current user manager.
      */
-    user: UserManager.IManager;
+    user: User.IManager;
   }
 }

@@ -91,7 +91,9 @@ test.describe('Extension Manager', () => {
       'drawio'
     );
 
-    await page.keyboard.press('Tab');
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement).blur();
+    });
 
     // We can not wait for extension kept by the keyword as they are already in the DOM
     await page.waitForSelector('text=No entries');
@@ -169,7 +171,7 @@ async function openExtensionSidebar(page: IJupyterLabPageFixture) {
         `${galata.Routes.extensions}?query&page=1&per_page=30&refresh=0`
       )
     ),
-    page.click('button:has-text("Enable")')
+    page.click('button:has-text("Yes")')
   ]);
   await page.waitForSelector(
     '.jp-extensionmanager-view >> .jp-AccordionPanel-title[aria-expanded="false"] >> text=Warning'

@@ -10,8 +10,7 @@ import {
 import { IObservableList } from '@jupyterlab/observables';
 import { IRenderMime } from '@jupyterlab/rendermime-interfaces';
 import { Contents, Kernel } from '@jupyterlab/services';
-import * as models from '@jupyterlab/shared-models';
-import { ISharedDocument } from '@jupyterlab/shared-models';
+import { ISharedDocument, ISharedFile } from '@jupyter/ydoc';
 import { ITranslator, nullTranslator } from '@jupyterlab/translation';
 import {
   fileIcon,
@@ -50,7 +49,7 @@ export class DocumentRegistry implements IDisposable {
     if (factory && factory.name !== 'text') {
       throw new Error('Text model factory must have the name `text`');
     }
-    this._modelFactories['text'] = factory || new TextModelFactory();
+    this._modelFactories['text'] = factory || new TextModelFactory(true);
 
     const fts =
       options.initialFileTypes ||
@@ -825,6 +824,12 @@ export namespace DocumentRegistry {
     readonly sharedModel: ISharedDocument;
 
     /**
+     * Whether this document model supports collaboration when the collaborative
+     * flag is enabled globally. Defaults to `false`.
+     */
+    readonly collaborative?: boolean;
+
+    /**
      * Serialize the model to a string.
      */
     toString(): string;
@@ -855,7 +860,7 @@ export namespace DocumentRegistry {
    * The interface for a document model that represents code.
    */
   export interface ICodeModel extends IModel, CodeEditor.IModel {
-    sharedModel: models.ISharedFile;
+    sharedModel: ISharedFile;
   }
 
   /**
@@ -1166,13 +1171,18 @@ export namespace DocumentRegistry {
     readonly fileFormat: Contents.FileFormat;
 
     /**
+     * Whether the model is collaborative or not.
+     */
+    readonly collaborative?: boolean;
+
+    /**
      * Create a new model for a given path.
      *
      * @param languagePreference - An optional kernel language preference.
      *
      * @returns A new document model.
      */
-    createNew(languagePreference?: string): T;
+    createNew(languagePreference?: string, collaborationEnabled?: boolean): T;
 
     /**
      * Get the preferred kernel language given a file path.

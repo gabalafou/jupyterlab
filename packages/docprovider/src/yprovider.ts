@@ -4,8 +4,8 @@
 |----------------------------------------------------------------------------*/
 
 import { URLExt } from '@jupyterlab/coreutils';
-import { ServerConnection, UserManager } from '@jupyterlab/services';
-import { DocumentChange, YDocument } from '@jupyterlab/shared-models';
+import { ServerConnection, User } from '@jupyterlab/services';
+import { DocumentChange, YDocument } from '@jupyter/ydoc';
 import { PromiseDelegate } from '@lumino/coreutils';
 import { Signal } from '@lumino/signaling';
 import { Awareness } from 'y-protocols/awareness';
@@ -106,7 +106,7 @@ export class WebSocketProvider implements IDocumentProvider {
     Signal.clearData(this);
   }
 
-  private _onUserChanged(user: UserManager.IManager): void {
+  private _onUserChanged(user: User.IManager): void {
     this._awareness.setLocalStateField('user', user.identity);
   }
 
@@ -138,6 +138,6 @@ export namespace WebSocketProvider {
     /**
      * The user data
      */
-    user: UserManager.IManager;
+    user: User.IManager;
   }
 }

@@ -12,6 +12,7 @@ import {
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
 import {
+  Clipboard,
   ICommandPalette,
   IThemeManager,
   MainAreaWidget,
@@ -478,6 +479,24 @@ const variables: JupyterFrontEndPlugin<void> = {
         });
       }
     });
+
+    commands.addCommand(CommandIDs.copyToClipboard, {
+      label: trans.__('Copy to Clipboard'),
+      caption: trans.__('Copy text representation of the value to clipboard'),
+      isEnabled: () => {
+        return (
+          !!service.session?.isStarted &&
+          !!service.model.variables.selectedVariable?.value
+        );
+      },
+      isVisible: () => handler.activeWidget instanceof NotebookPanel,
+      execute: async () => {
+        const value = service.model.variables.selectedVariable!.value;
+        if (value) {
+          Clipboard.copyToSystem(value);
+        }
+      }
+    });
   }
 };
 
@@ -513,7 +532,7 @@ const sidebar: JupyterFrontEndPlugin<IDebugger.ISidebar> = {
 
     const breakpointsCommands = {
       registry: commands,
-      pause: CommandIDs.pause
+      pause: CommandIDs.pauseOnExceptions
     };
 
     const sidebar = new Debugger.Sidebar({
@@ -651,12 +670,28 @@ const main: JupyterFrontEndPlugin<void> = {
     });
 
     commands.addCommand(CommandIDs.debugContinue, {
-      label: trans.__('Continue'),
-      caption: trans.__('Continue'),
-      icon: Debugger.Icons.continueIcon,
-      isEnabled: () => service.hasStoppedThreads(),
+      label: () => {
+        return service.hasStoppedThreads()
+          ? trans.__('Continue')
+          : trans.__('Pause');
+      },
+      caption: () => {
+        return service.hasStoppedThreads()
+          ? trans.__('Continue')
+          : trans.__('Pause');
+      },
+      icon: () => {
+        return service.hasStoppedThreads()
+          ? Debugger.Icons.continueIcon
+          : Debugger.Icons.pauseIcon;
+      },
+      isEnabled: () => service.session?.isStarted ?? false,
       execute: async () => {
-        await service.continue();
+        if (service.hasStoppedThreads()) {
+          await service.continue();
+        } else {
+          await service.pause();
+        }
         commands.notifyCommandChanged();
       }
     });
@@ -702,7 +737,7 @@ const main: JupyterFrontEndPlugin<void> = {
       }
     });
 
-    commands.addCommand(CommandIDs.pause, {
+    commands.addCommand(CommandIDs.pauseOnExceptions, {
       label: trans.__('Enable / Disable pausing on exceptions'),
       caption: () =>
         service.isStarted
@@ -781,7 +816,7 @@ const main: JupyterFrontEndPlugin<void> = {
         CommandIDs.stepIn,
         CommandIDs.stepOut,
         CommandIDs.evaluate,
-        CommandIDs.pause
+        CommandIDs.pauseOnExceptions
       ].forEach(command => {
         palette.addItem({ command, category });
       });

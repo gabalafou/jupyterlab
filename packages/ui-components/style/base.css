@@ -13,9 +13,10 @@
 @import './iconshover.css';
 @import './iframe.css';
 @import './hoverbox.css';
+@import './rjsfTemplates.css';
+@import './sidepanel.css';
 @import './spinner.css';
 @import './styling.css';
-@import './sidepanel.css';
 @import './switch.css';
 @import './toolbar.css';
 @import './windowedlist.css';
@@ -34,13 +35,6 @@ a {
 a:hover {
   text-decoration: unset;
   color: unset;
-}
-
-/* Disable default focus outline */
-:focus {
-  outline: unset;
-  outline-offset: unset;
-  -moz-outline-radius: unset;
 }
 
 /* Accessibility for links inside dialog box text */
@@ -165,6 +159,7 @@ input::placeholder {
   color: var(--jp-ui-font-color0);
   display: block;
   font-size: var(--jp-ui-font-size1);
+  font-family: var(--jp-ui-font-family);
   height: 24px;
   line-height: 14px;
   padding: 0 25px 0 10px;

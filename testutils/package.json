@@ -1,6 +1,6 @@
 {
   "name": "@jupyterlab/testutils",
-  "version": "4.0.0-alpha.15",
+  "version": "4.0.0-alpha.17",
   "description": "JupyterLab - Test Utilities",
   "homepage": "https://github.com/jupyterlab/jupyterlab",
   "bugs": {
@@ -27,46 +27,18 @@
   "scripts": {
     "build": "tsc -b",
     "build:all": "npm run build",
-    "build:test": "tsc --build tsconfig.test.json",
     "clean": "rimraf lib && rimraf tsconfig.tsbuildinfo",
-    "test": "jest",
-    "test:cov": "jest --collect-coverage",
-    "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand",
-    "test:debug:watch": "node --inspect-brk node_modules/.bin/jest --runInBand --watch",
     "watch": "tsc -b --watch"
   },
   "dependencies": {
-    "@jupyterlab/apputils": "^4.0.0-alpha.15",
-    "@jupyterlab/cells": "^4.0.0-alpha.15",
-    "@jupyterlab/codeeditor": "^4.0.0-alpha.15",
-    "@jupyterlab/codemirror": "^4.0.0-alpha.15",
-    "@jupyterlab/coreutils": "^6.0.0-alpha.15",
-    "@jupyterlab/docregistry": "^4.0.0-alpha.15",
-    "@jupyterlab/nbformat": "^4.0.0-alpha.15",
-    "@jupyterlab/notebook": "^4.0.0-alpha.15",
-    "@jupyterlab/rendermime": "^4.0.0-alpha.15",
-    "@jupyterlab/services": "^7.0.0-alpha.15",
-    "@lumino/coreutils": "^2.0.0-alpha.6",
-    "@lumino/properties": "^2.0.0-alpha.6",
-    "@lumino/signaling": "^2.0.0-alpha.6",
-    "child_process": "~1.0.2",
-    "deepmerge": "^4.2.2",
-    "fs-extra": "^9.0.1",
-    "identity-obj-proxy": "^3.0.0",
-    "jest": "^26.4.2",
-    "jest-junit": "^11.1.0",
-    "jest-raw-loader": "^1.0.1",
-    "jest-summary-reporter": "^0.0.2",
-    "json-to-html": "~0.1.2",
-    "node-fetch": "^2.6.0",
-    "simulate-event": "~1.4.0",
-    "ts-jest": "^26.3.0"
+    "@jupyterlab/application": "^4.0.0-alpha.17",
+    "@jupyterlab/apputils": "^4.0.0-alpha.17",
+    "@jupyterlab/notebook": "^4.0.0-alpha.17",
+    "@jupyterlab/rendermime": "^4.0.0-alpha.17",
+    "@jupyterlab/testing": "^4.0.0-alpha.17"
   },
   "devDependencies": {
-    "@types/jest": "^26.0.10",
-    "@types/node": "^14.6.1",
-    "@types/node-fetch": "^2.5.4",
-    "jest-retries": "^1.0.1",
+    "rimraf": "~3.0.0",
     "typescript": "~4.7.3"
   },
   "publishConfig": {

@@ -48,7 +48,10 @@ test.describe('Default', () => {
 
     await page.waitForSelector('div[role="main"] >> text=Lorenz.ipynb');
 
-    await page.waitForSelector('text=Python 3 (ipykernel) | Idle');
+    // Wait for kernel to settle on idle
+    await page.waitForSelector('#jp-main-statusbar >> text=Idle');
+    await page.waitForSelector('#jp-main-statusbar >> text=Busy');
+    await page.waitForSelector('#jp-main-statusbar >> text=Idle');
 
     expect(
       await page
@@ -195,6 +198,8 @@ test.describe('Customized', () => {
     await page.menu.clickMenuItem('File>New>Terminal');
 
     await page.waitForSelector('.jp-Terminal');
+
+    await setSidebarWidth(page, 271, 'right');
 
     expect(await page.screenshot()).toMatchSnapshot(
       'customized-terminal-position-single.png'

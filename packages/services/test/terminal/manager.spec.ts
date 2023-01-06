@@ -1,7 +1,7 @@
 // Copyright (c) Jupyter Development Team.
 // Distributed under the terms of the Modified BSD License.
 
-import { JupyterServer, testEmission } from '@jupyterlab/testutils';
+import { JupyterServer, testEmission } from '@jupyterlab/testing';
 import {
   ServerConnection,
   Terminal,
@@ -13,7 +13,7 @@ const server = new JupyterServer();
 
 beforeAll(async () => {
   await server.start();
-});
+}, 30000);
 
 afterAll(async () => {
   await server.shutdown();

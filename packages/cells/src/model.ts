@@ -27,7 +27,7 @@ import {
   ISharedMarkdownCell,
   ISharedRawCell,
   YCodeCell
-} from '@jupyterlab/shared-models';
+} from '@jupyter/ydoc';
 
 const globalModelDBMutex = createMutex();
 

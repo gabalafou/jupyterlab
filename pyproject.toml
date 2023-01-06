@@ -9,7 +9,7 @@ build-backend = "hatchling.build"
 name = "jupyterlab"
 description = "JupyterLab computational environment"
 readme = "README.md"
-license = ""
+license = { file = "LICENSE" }
 requires-python = ">=3.7"
 authors = [
     { name = "Jupyter Development Team", email = "jupyter@googlegroups.com" },
@@ -32,6 +32,7 @@ classifiers = [
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 dependencies = [
     "async_lru>=1.0.0",
@@ -42,14 +43,13 @@ dependencies = [
     "jupyter_core",
     "jupyter-lsp>=1.5.1",
     "jupyter_server>=2.0.0rc3,<3",
-    "jupyter_ydoc>=0.2.2,<0.3.0",
-    "jupyter_server_ydoc>=0.1.14,<0.2.0",
+    "jupyter_server_ydoc>=0.6.0,<0.7.0",
     "jupyterlab_server>=2.16.0,<3",
     "notebook_shim>=0.2",
     "packaging",
     "traitlets",
     "tornado>=6.1.0",
-    "tomli",
+    "tomli;python_version<\"3.11\"",
     "ypy-websocket",
 ]
 dynamic = [
@@ -90,7 +90,7 @@ docs-screenshots = [
     "altair==4.2.0",
     "ipython==8.0.0",
     "ipywidgets==7.6.6",
-    "jupyterlab-geojson==3.2.0",
+    "jupyterlab-geojson==3.3.1",
     "jupyterlab-language-pack-zh-CN==3.2.post7",
     "matplotlib==3.5.1",
     "nbconvert>=7.0.0",
@@ -105,6 +105,7 @@ test = [
     "pytest-check-links>=0.7",
     "pytest-console-scripts",
     "pytest-cov",
+    "pytest-jupyter>=0.5.3",
     "pytest-timeout",
     "pytest-tornasync",
     "requests",
@@ -112,7 +113,9 @@ test = [
     "virtualenv",
 ]
 dev = ["build", "pre-commit", "pytest-cov", "coverage", "hatch", "bump2version"]
-ui-tests = ["build"]
+
+[tool.check-wheel-contents]
+ignore = ["W002", "W004"]
 
 [tool.hatch.version]
 path = "jupyterlab/_version.py"
@@ -225,6 +228,3 @@ before-build-python = [
     "node buildutils/lib/local-repository fix-links --path jupyterlab/staging",
 ]
 after-publish-assets = "npm run after:publish:assets"
-
-[license]
-file = "LICENSE"
