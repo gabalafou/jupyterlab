@@ -21,7 +21,7 @@ here = osp.abspath(osp.dirname(__file__))
 
 def header(path):
     test_name = osp.basename(path)
-    print(  # noqa
+    print(
         "\n".join(("\n", "*" * 40, f"Starting {test_name} test in {path}", "*" * 40)),
         flush=True,
     )
@@ -35,11 +35,11 @@ def main():
     paths = [i for i in glob.glob("%s/*" % here) if osp.isdir(i)]
 
     services_dir = osp.abspath(osp.join(here, "../packages/services/examples"))
-    paths += [i for i in glob.glob("%s/*" % services_dir)]
+    paths += list(glob.glob("%s/*" % services_dir))
     if args.testPath:
         paths = [p for p in paths if args.testPath in p]
 
-    print("Testing %s" % paths)  # noqa
+    print("Testing %s" % paths)
     count = 0
     for path in sorted(paths):
         if osp.basename(path) == "node":
@@ -55,7 +55,7 @@ def main():
                 subprocess.check_call([sys.executable, runner, path], cwd=cwd)
                 count += 1
 
-    print("\n\n%s tests complete!" % count)  # noqa
+    print("\n\n%s tests complete!" % count)
 
 
 if __name__ == "__main__":

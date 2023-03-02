@@ -429,7 +429,7 @@ class ExtensionManager(LoggingConfigurable):
                 j = json.loads(r.body)
                 rules.extend(j.get("allowed_extensions", []))
 
-        self._listings_cache = dict([(r["name"], r) for r in rules])
+        self._listings_cache = {r["name"]: r for r in rules}
 
     async def _get_installed_extensions(
         self, get_latest_version=True

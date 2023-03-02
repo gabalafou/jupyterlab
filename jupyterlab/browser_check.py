@@ -57,7 +57,7 @@ class LogErrorHandler(logging.Handler):
         return super().filter(record)
 
     def emit(self, record):
-        print(record.msg, file=sys.stderr)  # noqa
+        print(record.msg, file=sys.stderr)
         self.errored = True
 
 
@@ -177,7 +177,7 @@ class BrowserApp(LabApp):
     test_browser = Bool(True)
 
     def initialize_settings(self):
-        self.settings.setdefault("page_config_data", dict())
+        self.settings.setdefault("page_config_data", {})
         self.settings["page_config_data"]["browserTest"] = True
         self.settings["page_config_data"]["buildAvailable"] = False
         self.settings["page_config_data"]["exposeAppInBrowser"] = True

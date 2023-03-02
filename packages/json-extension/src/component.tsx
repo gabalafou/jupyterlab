@@ -7,9 +7,10 @@ import { InputGroup } from '@jupyterlab/ui-components';
 import { Tag, tags } from '@lezer/highlight';
 import { JSONArray, JSONExt, JSONObject, JSONValue } from '@lumino/coreutils';
 import * as React from 'react';
-import Highlight from 'react-highlighter';
+import Highlighter from 'react-highlight-words';
 import { JSONTree } from 'react-json-tree';
 import { StyleModule } from 'style-mod';
+
 /**
  * The properties for the JSON tree component.
  */
@@ -21,6 +22,7 @@ export interface IProps {
    * The application language translator.
    */
   translator?: ITranslator;
+  forwardedRef?: React.Ref<HTMLDivElement>;
 }
 
 /**
@@ -63,13 +65,13 @@ export class Component extends React.Component<IProps, IState> {
     const translator = this.props.translator || nullTranslator;
     const trans = translator.load('jupyterlab');
 
-    const { data, metadata } = this.props;
+    const { data, metadata, forwardedRef } = this.props;
     const root = metadata && metadata.root ? (metadata.root as string) : 'root';
     const keyPaths = this.state.filter
       ? filterPaths(data, this.state.filter, [root])
       : [root];
     return (
-      <div className="container">
+      <div className="container" ref={forwardedRef}>
         <InputGroup
           className="filter"
           type="text"
@@ -95,7 +97,7 @@ export class Component extends React.Component<IProps, IState> {
               <span>
                 {itemType} {itemString}
               </span>
-            ) : Object.keys(data).length === 0 ? (
+            ) : Object.keys(data as object).length === 0 ? (
               // Only display object type when it's empty i.e. "{}".
               <span>{itemType}</span>
             ) : (
@@ -105,12 +107,11 @@ export class Component extends React.Component<IProps, IState> {
           labelRenderer={([label, type]) => {
             return (
               <span className={getStyle(tags.keyword)}>
-                <Highlight
-                  search={this.state.filter}
-                  matchStyle={{ backgroundColor: 'yellow' }}
-                >
-                  {`${label}: `}
-                </Highlight>
+                <Highlighter
+                  searchWords={[this.state.filter]}
+                  textToHighlight={`${label}`}
+                  highlightClassName="jp-mod-selected"
+                ></Highlighter>
               </span>
             );
           }}
@@ -124,16 +125,15 @@ export class Component extends React.Component<IProps, IState> {
             }
             return (
               <span className={className}>
-                <Highlight
-                  search={this.state.filter}
-                  matchStyle={{ backgroundColor: 'yellow' }}
-                >
-                  {`${raw}`}
-                </Highlight>
+                <Highlighter
+                  searchWords={[this.state.filter]}
+                  textToHighlight={`${raw}`}
+                  highlightClassName="jp-mod-selected"
+                ></Highlighter>
               </span>
             );
           }}
-          shouldExpandNode={(keyPath, data, level) =>
+          shouldExpandNodeInitially={(keyPath, data, level) =>
             metadata && metadata.expanded
               ? true
               : keyPaths.join(',').includes(keyPath.join(','))

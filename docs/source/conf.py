@@ -253,7 +253,7 @@ html_theme_options = {
     "use_edit_page_button": True,
     "navbar_align": "left",
     "navbar_end": ["navbar-icon-links.html", "search-field.html"],
-    "footer_items": ["copyright.html"],
+    "footer_start": ["copyright.html"],
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -382,7 +382,7 @@ def setup(app):
         """Remove temporary folder."""
         try:
             shutil.rmtree(str(Path(app.srcdir) / SNIPPETS_FOLDER))
-        except Exception:
+        except Exception:  # noqa S110
             pass
 
         for f in tmp_files:

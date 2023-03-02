@@ -20,6 +20,7 @@ import {
   sessionContextDialogs,
   WidgetTracker
 } from '@jupyterlab/apputils';
+import { CodeCell } from '@jupyterlab/cells';
 import { IEditorServices } from '@jupyterlab/codeeditor';
 import { ConsolePanel, IConsoleTracker } from '@jupyterlab/console';
 import { PageConfig, PathExt } from '@jupyterlab/coreutils';
@@ -48,6 +49,14 @@ import { Session } from '@jupyterlab/services';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
 import { ITranslator } from '@jupyterlab/translation';
 
+function notifyCommands(app: JupyterFrontEnd): void {
+  Object.values(Debugger.CommandIDs).forEach(command => {
+    if (app.commands.hasCommand(command)) {
+      app.commands.notifyCommandChanged(command);
+    }
+  });
+}
+
 /**
  * A plugin that provides visual debugging support for consoles.
  */
@@ -74,7 +83,7 @@ const consoles: JupyterFrontEndPlugin<void> = {
       const { sessionContext } = widget;
       await sessionContext.ready;
       await handler.updateContext(widget, sessionContext);
-      app.commands.notifyCommandChanged();
+      notifyCommands(app);
     };
 
     if (labShell) {
@@ -137,7 +146,7 @@ const files: JupyterFrontEndPlugin<void> = {
           activeSessions[model.id] = session;
         }
         await handler.update(widget, session);
-        app.commands.notifyCommandChanged();
+        notifyCommands(app);
       } catch {
         return;
       }
@@ -222,7 +231,7 @@ const notebooks: JupyterFrontEndPlugin<IDebugger.IHandler> = {
         await sessionContext.ready;
         await handler.updateContext(widget, sessionContext);
       }
-      app.commands.notifyCommandChanged();
+      notifyCommands(app);
     };
 
     if (labShell) {
@@ -343,9 +352,11 @@ const variables: JupyterFrontEndPlugin<void> = {
       caption: trans.__('Inspect Variable'),
       isEnabled: args =>
         !!service.session?.isStarted &&
-        (args.variableReference ??
-          service.model.variables.selectedVariable?.variablesReference ??
-          0) > 0,
+        Number(
+          args.variableReference ??
+            service.model.variables.selectedVariable?.variablesReference ??
+            0
+        ) > 0,
       execute: async args => {
         let { variableReference, name } = args as {
           variableReference?: number;
@@ -629,7 +640,7 @@ const main: JupyterFrontEndPlugin<void> = {
       const info = (await kernel.info).language_info;
       const name = info.name;
       const mimeType =
-        editorServices?.mimeTypeService.getMimeTypeByLanguage({ name }) ?? '';
+        editorServices.mimeTypeService.getMimeTypeByLanguage({ name }) ?? '';
       return mimeType;
     };
 
@@ -647,6 +658,10 @@ const main: JupyterFrontEndPlugin<void> = {
           okLabel: trans.__('Evaluate'),
           cancelLabel: trans.__('Cancel'),
           mimeType,
+          contentFactory: new CodeCell.ContentFactory({
+            editorFactory: options =>
+              editorServices.factoryService.newInlineEditor(options)
+          }),
           rendermime
         });
         const code = result.value;
@@ -693,7 +708,7 @@ const main: JupyterFrontEndPlugin<void> = {
         } else {
           await service.pause();
         }
-        commands.notifyCommandChanged();
+        commands.notifyCommandChanged(CommandIDs.debugContinue);
       }
     });
 
@@ -704,7 +719,7 @@ const main: JupyterFrontEndPlugin<void> = {
       isEnabled: () => service.hasStoppedThreads(),
       execute: async () => {
         await service.restart();
-        commands.notifyCommandChanged();
+        notifyCommands(app);
       }
     });
 
@@ -782,7 +797,7 @@ const main: JupyterFrontEndPlugin<void> = {
     }
 
     service.eventMessage.connect((_, event): void => {
-      commands.notifyCommandChanged();
+      notifyCommands(app);
       if (labShell && event.event === 'initialized') {
         labShell.activateById(sidebar.id);
       } else if (
@@ -796,7 +811,7 @@ const main: JupyterFrontEndPlugin<void> = {
     });
 
     service.sessionChanged.connect(_ => {
-      commands.notifyCommandChanged();
+      notifyCommands(app);
     });
 
     if (restorer) {
