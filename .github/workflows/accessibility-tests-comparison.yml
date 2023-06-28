@@ -1,0 +1,75 @@
+name: Accessibility Tests Comparison
+
+on:
+  issue_comment:
+
+jobs:
+  print-info:
+    if: github.event.issue.pull_request
+    needs: pr_sha_from_number
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+      - run: echo "outputs.head_sha ${{ needs.pr_sha_from_number.outputs.head_sha }}"
+      - run: echo "outputs.head_sha ${{ needs.pr_sha_from_number.outputs.base_sha }}"
+
+  pr_sha_from_number:
+    if: github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    outputs:
+      head_sha: ${{ fromJSON(steps.get_pr.outputs.data).head.sha }}
+      base_sha: ${{ fromJSON(steps.get_pr.outputs.data).base.sha }}
+    steps:
+      - id: get_pr
+        name: GitHub API Request
+        uses: octokit/request-action@v2.1.7
+        with:
+          route: GET /repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  accessibility-tests-comparison:
+    name: Compare accessibility tests
+    if: github.event.issue.pull_request && github.event.comment.body == 'please compare accessibility tests'
+    runs-on: ubuntu-latest
+    needs: pr_sha_from_number
+    steps:
+      - name: Write Intro to Job summary
+        run: |
+          echo "Hi, it looks like you requested a comparison of" >> $GITHUB_STEP_SUMMARY
+          echo "accessibility tests for PR #${{ github.event.issue.number }}." >> $GITHUB_STEP_SUMMARY
+          echo "The tests will first be run against the base branch of the PR." >> $GITHUB_STEP_SUMMARY
+          echo "Then they will be run against the head commit of the PR." >> $GITHUB_STEP_SUMMARY
+          echo "This should allow you to see that this PR fixes an accessibility" >> $GITHUB_STEP_SUMMARY
+          echo "issue that has a corresponding regression test." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following test results are against the base, whose commit SHA is:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.pr_sha_from_number.outputs.base_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run accessibility tests against base branch
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ needs.pr_sha_from_number.outputs.base_sha }}
+          test_project: regression
+
+      - name: Intro second run
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "-----------" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following test results are against this PR, whose head commit SHA is:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ needs.pr_sha_from_number.outputs.head_sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run accessibility tests against base branch
+        uses: gabalafou/jupyter-a11y-testing/.github/actions/accessibility-test-jupyterlab@main
+        with:
+          repository: ${{ github.repository }}
+          ref: ${{ needs.pr_sha_from_number.outputs.head_sha }}
+          test_project: regression
