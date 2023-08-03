@@ -824,8 +824,17 @@ Writing Documentation
 
 Documentation is written in Markdown and reStructuredText. In
 particular, the documentation on our Read the Docs page is written in
-reStructuredText. To ensure that the Read the Docs page builds, you'll
-need to install the documentation dependencies with ``pip``:
+reStructuredText. 
+
+Whenever you submit a pull request, Read the Docs will try to build a 
+preview of your changes to the docs. To find this preview build, go to 
+the `Recent Builds <https://readthedocs.org/projects/jupyterlab/builds/>`__ 
+page and look for your PR number. Look for the link **not the button** 
+that says "View docs." It should have a URL of the form 
+``https://jupyterlab--<PR-number>.org.readthedocs.build/en/<PR-number>/``.
+
+Alternatively, you can try to build the docs on your machine. First
+you will need to install the documentation dependencies with ``pip``:
 
 .. code:: bash
 
