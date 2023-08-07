@@ -5,5 +5,6 @@
  * @module terminal
  */
 
+export * from './escape-message';
 export * from './tokens';
 export * from './widget';

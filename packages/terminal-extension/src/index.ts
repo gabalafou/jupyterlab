@@ -32,9 +32,11 @@ import {
   copyIcon,
   pasteIcon,
   refreshIcon,
-  terminalIcon
+  terminalIcon,
+  Toolbar
 } from '@jupyterlab/ui-components';
 import { Menu, Widget } from '@lumino/widgets';
+import { EscapeMessage } from '@jupyterlab/terminal';
 
 /**
  * The command IDs used by the terminal plugin.
@@ -383,7 +385,14 @@ function addCommands(
       term.title.icon = terminalIcon;
       term.title.label = '...';
 
-      const main = new MainAreaWidget({ content: term, reveal: term.ready });
+      const toolbar = new Toolbar();
+      toolbar.addItem('escape-message', new EscapeMessage());
+
+      const main = new MainAreaWidget({
+        content: term,
+        reveal: term.ready,
+        toolbar
+      });
       app.shell.add(main, 'main', { type: 'Terminal' });
       void tracker.add(main);
       app.shell.activateById(main.id);
