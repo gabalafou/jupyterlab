@@ -2,8 +2,8 @@
 // Distributed under the terms of the Modified BSD License.
 
 import { ISessionContext, SessionContext } from '@jupyterlab/apputils';
-import { CodeEditor, CodeEditorWrapper } from '@jupyterlab/codeeditor';
-import { CodeMirrorEditor, ybinding } from '@jupyterlab/codemirror';
+import { CodeEditorWrapper } from '@jupyterlab/codeeditor';
+import { Signal } from '@lumino/signaling';
 import {
   Completer,
   CompleterModel,
@@ -13,22 +13,10 @@ import {
   ICompletionProvider,
   ProviderReconciliator
 } from '@jupyterlab/completer';
+import { createEditorWidget } from '@jupyterlab/completer/lib/testutils';
 import { Widget } from '@lumino/widgets';
-import { ISharedText, SourceChange, YFile } from '@jupyter/ydoc';
+import { ISharedFile, ISharedText, SourceChange } from '@jupyter/ydoc';
 import { createSessionContext } from '@jupyterlab/apputils/lib/testutils';
-
-function createEditorWidget(): CodeEditorWrapper {
-  const model = new CodeEditor.Model({ sharedModel: new YFile() });
-  const factory = (options: CodeEditor.IOptions) => {
-    const m = options.model.sharedModel as any;
-    options.extensions = [
-      ...(options.extensions ?? []),
-      ybinding({ ytext: m.ysource })
-    ];
-    return new CodeMirrorEditor(options);
-  };
-  return new CodeEditorWrapper({ factory, model });
-}
 
 class TestCompleterModel extends CompleterModel {
   methods: string[] = [];
@@ -47,8 +35,8 @@ class TestCompleterModel extends CompleterModel {
 class TestCompletionHandler extends CompletionHandler {
   methods: string[] = [];
 
-  onTextChanged(str: ISharedText, changed: SourceChange): void {
-    super.onTextChanged(str, changed);
+  async onTextChanged(str: ISharedText, changed: SourceChange): Promise<void> {
+    void super.onTextChanged(str, changed);
     this.methods.push('onTextChanged');
   }
 
@@ -59,7 +47,7 @@ class TestCompletionHandler extends CompletionHandler {
 }
 
 class FooCompletionProvider implements ICompletionProvider {
-  methods: CompletionTriggerKind[] = [];
+  triggers: CompletionTriggerKind[] = [];
 
   constructor(private _continuousHint: boolean) {}
 
@@ -75,11 +63,15 @@ class FooCompletionProvider implements ICompletionProvider {
     context: ICompletionContext,
     trigger: CompletionTriggerKind
   ): Promise<CompletionHandler.ICompletionItemsReply> {
-    this.methods.push(trigger);
+    this.triggers.push(trigger);
     return Promise.resolve({ start: 0, end: 0, items: [] });
   }
 
-  shouldShowContinuousHint(completerIsVisible: boolean, changed: any) {
+  shouldShowContinuousHint(
+    completerIsVisible: boolean,
+    changed: SourceChange,
+    context?: ICompletionContext
+  ) {
     return this._continuousHint;
   }
 }
@@ -226,10 +218,9 @@ describe('@jupyterlab/completer', () => {
         );
         editor.model.sharedModel.setSource('bar');
         editor.setCursorPosition({ line: 0, column: 2 });
-        // This signal is emitted (again) because the cursor position that
-        // a natural user would create need to be recreated here.
-        // (editor.model.value.changed as any).emit({ type: 'set', value: 'bar' }); @todo remove?
-        (editor.model.sharedModel.changed as any).emit([]);
+        (
+          editor.model.sharedModel.changed as Signal<ISharedText, SourceChange>
+        ).emit({ sourceChange: {} as any });
         expect(model.methods).toEqual(
           expect.arrayContaining(['handleTextChange'])
         );
@@ -347,19 +338,21 @@ describe('@jupyterlab/completer', () => {
       });
     });
 
-    describe('#CompletionTriggerKind', () => {
+    describe('#autoCompletion', () => {
       let anchor: CodeEditorWrapper;
       let provider: FooCompletionProvider;
       let handler: CompletionHandler;
+      let context: symbol;
 
       beforeAll(async () => {
         anchor = createEditorWidget();
         Widget.attach(anchor, document.body);
+        context = Symbol();
 
         provider = new FooCompletionProvider(true);
         handler = new CompletionHandler({
           reconciliator: new ProviderReconciliator({
-            context: null as any,
+            context: context as any,
             providers: [provider],
             timeout: 0
           }),
@@ -379,29 +372,62 @@ describe('@jupyterlab/completer', () => {
         handler.dispose();
       });
 
-      it('should use CompletionTriggerKind.Invoked', () => {
-        expect(provider.methods.length).toEqual(0);
+      it('should use Invoked for invoke()', async () => {
+        expect(provider.triggers.length).toEqual(0);
 
         handler.editor!.model.sharedModel.setSource('foo.');
         anchor.node.focus();
         anchor.editor.setCursorPosition({ line: 0, column: 4 });
         handler.invoke();
-
-        expect(provider.methods).toEqual(
+        // Need to wait for next tick to finish applicable providers check
+        await new Promise(process.nextTick);
+        expect(provider.triggers).toEqual(
           expect.arrayContaining([CompletionTriggerKind.Invoked])
         );
       });
 
-      it('should use CompletionTriggerKind.TriggerCharacter', () => {
-        // this test depends on the previous one ('should use CompletionTriggerKind.Invoked').
-        expect(provider.methods.length).toEqual(1);
+      it('should use TriggerCharacter for typed text', async () => {
+        // this test depends on the previous one ('should use Invoked for invoke()').
+        expect(provider.triggers.length).toEqual(1);
 
         handler.editor!.model.sharedModel.updateSource(4, 4, 'a');
-
-        expect(provider.methods.length).toEqual(2);
-        expect(provider.methods).toEqual(
+        await new Promise(process.nextTick);
+        expect(provider.triggers.length).toEqual(2);
+        expect(provider.triggers).toEqual(
           expect.arrayContaining([CompletionTriggerKind.TriggerCharacter])
         );
+      });
+
+      it('should not trigger on non-source changes to the model', async () => {
+        provider.triggers.length = 0;
+
+        (handler.editor!.model.sharedModel as ISharedFile).setState(
+          'state-variable',
+          'new-value'
+        );
+        await new Promise(process.nextTick);
+
+        expect(provider.triggers.length).toEqual(0);
+      });
+
+      it('should pass context to `shouldShowContinuousHint()`', async () => {
+        handler.editor!.model.sharedModel.setSource('foo.');
+        await new Promise(process.nextTick);
+        anchor.node.focus();
+        anchor.editor.setCursorPosition({ line: 0, column: 4 });
+        const spy = jest.spyOn(provider, 'shouldShowContinuousHint');
+
+        handler.editor!.model.sharedModel.updateSource(4, 4, 'a');
+        await new Promise(process.nextTick);
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenLastCalledWith(
+          false,
+          {
+            sourceChange: [{ retain: 4 }, { insert: 'a' }]
+          } as SourceChange,
+          context
+        );
+        spy.mockRestore();
       });
     });
 

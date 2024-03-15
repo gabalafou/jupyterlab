@@ -53,7 +53,9 @@ import { ILauncher } from '@jupyterlab/launcher';
 import {
   ILSPCodeExtractorsManager,
   ILSPDocumentConnectionManager,
-  ILSPFeatureManager
+  ILSPFeatureManager,
+  IWidgetLSPAdapterTracker,
+  WidgetLSPAdapterTracker
 } from '@jupyterlab/lsp';
 import { IMainMenu } from '@jupyterlab/mainmenu';
 import { IMetadataFormProvider } from '@jupyterlab/metadataform';
@@ -106,7 +108,8 @@ import {
   pasteIcon,
   refreshIcon,
   runIcon,
-  stopIcon
+  stopIcon,
+  tableRowsIcon
 } from '@jupyterlab/ui-components';
 import { ArrayExt } from '@lumino/algorithm';
 import { CommandRegistry } from '@lumino/commands';
@@ -313,6 +316,12 @@ namespace CommandIDs {
   export const selectCompleter = 'completer:select-notebook';
 
   export const tocRunCells = 'toc:run-cells';
+
+  export const accessPreviousHistory = 'notebook:access-previous-history-entry';
+
+  export const accessNextHistory = 'notebook:access-next-history-entry';
+
+  export const virtualScrollbar = 'notebook:toggle-virtual-scrollbar';
 }
 
 /**
@@ -423,6 +432,7 @@ export const commandEditItem: JupyterFrontEndPlugin<void> = {
     });
 
     statusBar.registerStatusItem('@jupyterlab/notebook-extension:mode-status', {
+      priority: 1,
       item,
       align: 'right',
       rank: 4,
@@ -871,16 +881,35 @@ const tocPlugin: JupyterFrontEndPlugin<void> = {
   id: '@jupyterlab/notebook-extension:toc',
   description: 'Adds table of content capability to the notebooks',
   requires: [INotebookTracker, ITableOfContentsRegistry, ISanitizer],
-  optional: [IMarkdownParser],
+  optional: [IMarkdownParser, ISettingRegistry],
   autoStart: true,
   activate: (
     app: JupyterFrontEnd,
     tracker: INotebookTracker,
     tocRegistry: ITableOfContentsRegistry,
     sanitizer: IRenderMime.ISanitizer,
-    mdParser: IMarkdownParser | null
+    mdParser: IMarkdownParser | null,
+    settingRegistry: ISettingRegistry | null
   ): void => {
-    tocRegistry.add(new NotebookToCFactory(tracker, mdParser, sanitizer));
+    const nbTocFactory = new NotebookToCFactory(tracker, mdParser, sanitizer);
+    tocRegistry.add(nbTocFactory);
+    if (settingRegistry) {
+      Promise.all([app.restored, settingRegistry.load(trackerPlugin.id)])
+        .then(([_, setting]) => {
+          const onSettingsUpdate = () => {
+            nbTocFactory.scrollToTop =
+              (setting.composite['scrollHeadingToTop'] as boolean) ?? true;
+          };
+          onSettingsUpdate();
+          setting.changed.connect(onSettingsUpdate);
+        })
+        .catch(error => {
+          console.error(
+            'Failed to load notebook table of content settings.',
+            error
+          );
+        });
+    }
   }
 };
 
@@ -891,7 +920,8 @@ const languageServerPlugin: JupyterFrontEndPlugin<void> = {
     INotebookTracker,
     ILSPDocumentConnectionManager,
     ILSPFeatureManager,
-    ILSPCodeExtractorsManager
+    ILSPCodeExtractorsManager,
+    IWidgetLSPAdapterTracker
   ],
   activate: activateNotebookLanguageServer,
   autoStart: true
@@ -1603,6 +1633,7 @@ function activateNotebookHandler(
       updateConfig(settings);
       settings.changed.connect(() => {
         updateConfig(settings);
+        commands.notifyCommandChanged(CommandIDs.virtualScrollbar);
       });
 
       const updateSessionSettings = (
@@ -1697,6 +1728,14 @@ function activateNotebookHandler(
             .catch(console.error);
         }
       });
+      addCommands(
+        app,
+        tracker,
+        translator,
+        sessionDialogs,
+        settings,
+        isEnabled
+      );
     })
     .catch((reason: Error) => {
       console.warn(reason.message);
@@ -1706,6 +1745,7 @@ function activateNotebookHandler(
         kernelShutdown: factory.shutdownOnClose,
         autoStartDefault: factory.autoStartDefault
       });
+      addCommands(app, tracker, translator, sessionDialogs, null, isEnabled);
     });
 
   if (formRegistry) {
@@ -1746,8 +1786,6 @@ function activateNotebookHandler(
   });
   registry.addModelFactory(modelFactory);
 
-  addCommands(app, tracker, translator, sessionDialogs, isEnabled);
-
   if (palette) {
     populatePalette(palette, translator);
   }
@@ -1780,6 +1818,14 @@ function activateNotebookHandler(
     tracker.forEach(widget => {
       widget.setConfig(options);
     });
+    if (options.notebookConfig.windowingMode !== 'full') {
+      // Disable all virtual scrollbars if any was enabled
+      tracker.forEach(widget => {
+        if (widget.content.scrollbar) {
+          widget.content.scrollbar = false;
+        }
+      });
+    }
   }
 
   /**
@@ -1803,6 +1849,8 @@ function activateNotebookHandler(
 
     factory.editorConfig = { code, markdown, raw };
     factory.notebookConfig = {
+      enableKernelInitNotification: settings.get('enableKernelInitNotification')
+        .composite as boolean,
       showHiddenCellsButton: settings.get('showHiddenCellsButton')
         .composite as boolean,
       scrollPastEnd: settings.get('scrollPastEnd').composite as boolean,
@@ -1831,7 +1879,9 @@ function activateNotebookHandler(
       windowingMode: settings.get('windowingMode').composite as
         | 'defer'
         | 'full'
-        | 'none'
+        | 'none',
+      accessKernelHistory: settings.get('accessKernelHistory')
+        .composite as boolean
     };
     setSideBySideOutputRatio(factory.notebookConfig.sideBySideOutputRatio);
     const sideBySideMarginStyle = `.jp-mod-sideBySide.jp-Notebook .jp-Notebook-cell {
@@ -2054,7 +2104,8 @@ function activateNotebookLanguageServer(
   notebooks: INotebookTracker,
   connectionManager: ILSPDocumentConnectionManager,
   featureManager: ILSPFeatureManager,
-  codeExtractorManager: ILSPCodeExtractorsManager
+  codeExtractorManager: ILSPCodeExtractorsManager,
+  adapterTracker: IWidgetLSPAdapterTracker
 ): void {
   notebooks.widgetAdded.connect(async (_, notebook) => {
     const adapter = new NotebookAdapter(notebook, {
@@ -2062,7 +2113,7 @@ function activateNotebookLanguageServer(
       featureManager,
       foreignCodeExtractorsManager: codeExtractorManager
     });
-    connectionManager.registerAdapter(notebook.context.path, adapter);
+    (adapterTracker as WidgetLSPAdapterTracker).add(adapter);
   });
 }
 
@@ -2090,6 +2141,7 @@ function addCommands(
   tracker: NotebookTracker,
   translator: ITranslator,
   sessionDialogs: ISessionContextDialogs,
+  settings: ISettingRegistry.ISettings | null,
   isEnabled: () => boolean
 ): void {
   const trans = translator.load('jupyterlab');
@@ -2399,18 +2451,24 @@ function addCommands(
   });
   commands.addCommand(CommandIDs.restartAndRunToSelected, {
     label: trans.__('Restart Kernel and Run up to Selected Cell…'),
-    execute: async () => {
-      const restarted: boolean = await commands.execute(CommandIDs.restart, {
-        activate: false
-      });
+    execute: async args => {
+      const current = getCurrent(tracker, shell, { activate: false, ...args });
+      if (!current) {
+        return;
+      }
+      const { context, content } = current;
+
+      const cells = content.widgets.slice(0, content.activeCellIndex + 1);
+      const restarted = await sessionDialogs.restart(current.sessionContext);
+
       if (restarted) {
-        const executed: boolean = await commands.execute(
-          CommandIDs.runAllAbove,
-          { activate: false }
+        return NotebookActions.runCells(
+          content,
+          cells,
+          context.sessionContext,
+          sessionDialogs,
+          translator
         );
-        if (executed) {
-          return commands.execute(CommandIDs.run);
-        }
       }
     },
     isEnabled: isEnabledAndSingleSelected
@@ -2418,12 +2476,25 @@ function addCommands(
   commands.addCommand(CommandIDs.restartRunAll, {
     label: trans.__('Restart Kernel and Run All Cells…'),
     caption: trans.__('Restart the kernel and run all cells'),
-    execute: async () => {
-      const restarted: boolean = await commands.execute(CommandIDs.restart, {
-        activate: false
-      });
+    execute: async args => {
+      const current = getCurrent(tracker, shell, { activate: false, ...args });
+
+      if (!current) {
+        return;
+      }
+      const { context, content } = current;
+
+      const cells = content.widgets;
+      const restarted = await sessionDialogs.restart(current.sessionContext);
+
       if (restarted) {
-        await commands.execute(CommandIDs.runAll);
+        return NotebookActions.runCells(
+          content,
+          cells,
+          context.sessionContext,
+          sessionDialogs,
+          translator
+        );
       }
     },
     isEnabled: args => (args.toolbar ? true : isEnabled()),
@@ -3350,7 +3421,6 @@ function addCommands(
       }
     }
   });
-
   commands.addCommand(CommandIDs.tocRunCells, {
     label: trans.__('Select and Run Cell(s) for this Heading'),
     execute: args => {
@@ -3392,6 +3462,50 @@ function addCommands(
       );
     }
   });
+  commands.addCommand(CommandIDs.accessPreviousHistory, {
+    label: trans.__('Access Previous Kernel History Entry'),
+    execute: async args => {
+      const current = getCurrent(tracker, shell, args);
+      if (current) {
+        return await NotebookActions.accessPreviousHistory(current.content);
+      }
+    }
+  });
+  commands.addCommand(CommandIDs.accessNextHistory, {
+    label: trans.__('Access Next Kernel History Entry'),
+    execute: async args => {
+      const current = getCurrent(tracker, shell, args);
+      if (current) {
+        return await NotebookActions.accessNextHistory(current.content);
+      }
+    }
+  });
+  commands.addCommand(CommandIDs.virtualScrollbar, {
+    label: trans.__('Virtual Scrollbar'),
+    caption: trans.__(
+      'Toggle virtual scrollbar (enabled with windowing mode: full)'
+    ),
+    execute: args => {
+      const current = getCurrent(tracker, shell, args);
+
+      if (current) {
+        current.content.scrollbar = !current.content.scrollbar;
+      }
+    },
+    icon: args => (args.toolbar ? tableRowsIcon : undefined),
+    isEnabled: args => {
+      const enabled =
+        (args.toolbar ? true : isEnabled()) &&
+        (settings?.composite.windowingMode === 'full' ?? false);
+      return enabled;
+    },
+    isVisible: args => {
+      const visible =
+        (args.toolbar ? true : isEnabled()) &&
+        (settings?.composite.windowingMode === 'full' ?? false);
+      return visible;
+    }
+  });
 }
 
 /**
@@ -3427,7 +3541,9 @@ function populatePalette(
     CommandIDs.trust,
     CommandIDs.toggleCollapseCmd,
     CommandIDs.collapseAllCmd,
-    CommandIDs.expandAllCmd
+    CommandIDs.expandAllCmd,
+    CommandIDs.accessPreviousHistory,
+    CommandIDs.accessNextHistory
   ].forEach(command => {
     palette.addItem({ command, category });
   });

@@ -13,6 +13,7 @@ import {
 import {
   CodeEditor,
   CodeViewerWidget,
+  IEditorMimeTypeService,
   IEditorServices
 } from '@jupyterlab/codeeditor';
 import {
@@ -567,7 +568,13 @@ export namespace Commands {
         if (name && widget) {
           const spec = languages.findByName(name);
           if (spec) {
-            widget.content.model.mimeType = spec.mime as string;
+            if (Array.isArray(spec.mime)) {
+              widget.content.model.mimeType =
+                (spec.mime[0] as string) ??
+                IEditorMimeTypeService.defaultMimeType;
+            } else {
+              widget.content.model.mimeType = spec.mime as string;
+            }
           }
         }
       },
@@ -839,9 +846,8 @@ export namespace Commands {
         if (!widget) {
           return false;
         }
-        // Ideally enable it when there are undo events stored
-        // Reference issue #8590: Code mirror editor could expose the history of undo/redo events
-        return true;
+
+        return widget.editor.model.sharedModel.canUndo();
       },
       icon: undoIcon.bindprops({ stylesheet: 'menuItem' }),
       label: trans.__('Undo')
@@ -870,9 +876,8 @@ export namespace Commands {
         if (!widget) {
           return false;
         }
-        // Ideally enable it when there are redo events stored
-        // Reference issue #8590: Code mirror editor could expose the history of undo/redo events
-        return true;
+
+        return widget.editor.model.sharedModel.canRedo();
       },
       icon: redoIcon.bindprops({ stylesheet: 'menuItem' }),
       label: trans.__('Redo')

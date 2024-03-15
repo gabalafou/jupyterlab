@@ -42,6 +42,19 @@ test.describe('Notebook Search', () => {
     expect(await nbPanel.screenshot()).toMatchSnapshot('search.png');
   });
 
+  test('Should open search box in edit mode', async ({ page }) => {
+    // Enter edit mode
+    await page.notebook.enterCellEditingMode(0);
+
+    await page.keyboard.press('Control+f');
+
+    // Wait for the search box
+    await page.getByPlaceholder('Find').waitFor();
+
+    // Check the CM search panel is not displayed.
+    await expect(page.locator('.cm-search.cm-panel')).toHaveCount(0);
+  });
+
   test('Typing in search box', async ({ page }) => {
     // Check against React being too eager with controling state of input box
     await page.keyboard.press('Control+f');
@@ -81,7 +94,7 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=1/1');
 
     // Show replace buttons to check for visual regressions
-    await page.click('button[title="Toggle Replace"]');
+    await page.click('button[title="Show Replace"]');
     await page.fill('[placeholder="Replace"]', 'line1\nline2');
 
     const overlay = page.locator('.jp-DocumentSearch-overlay');
@@ -162,6 +175,28 @@ test.describe('Notebook Search', () => {
     await expect(inputWithTestLocator).toBeVisible();
     // Expect the search to be active again
     await page.waitForSelector('text=1/2');
+  });
+
+  test('Clear search when box is empty', async ({ page }) => {
+    // Open search box
+    await page.keyboard.press('Control+f');
+
+    // Search for "test"
+    await page.keyboard.press('Control+f');
+    await page.fill('[placeholder="Find"]', 'test');
+
+    // Should find "test" matches
+    await page.locator('text=1/2').waitFor();
+    await expect(page.locator('[placeholder="Find"]')).toHaveValue('test');
+
+    // Remove the "test" query
+    for (let i = 0; i < 4; i++) {
+      await page.press('[placeholder="Find"]', 'Backspace');
+    }
+    await expect(page.locator('[placeholder="Find"]')).toHaveValue('');
+
+    // Should reset the search to a clean state
+    await page.locator('text=-/-').waitFor();
   });
 
   test('Close with Escape', async ({ page }) => {
@@ -363,7 +398,7 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=1/21');
 
     // Click next button
-    await page.click('button[title="Next Match"]');
+    await page.click('button[title^="Next Match"]');
 
     const cell = await page.notebook.getCell(0);
 
@@ -381,7 +416,7 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=1/21');
 
     // Click next button
-    await page.click('button[title="Next Match"]', {
+    await page.click('button[title^="Next Match"]', {
       clickCount: 4
     });
 
@@ -399,13 +434,13 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=1/21');
 
     // Click previous button
-    await page.click('button[title="Previous Match"]');
+    await page.click('button[title^="Previous Match"]');
     // Should cycle back
     await page.waitForSelector('text=21/21');
 
     // Click previous button twice
-    await page.click('button[title="Previous Match"]');
-    await page.click('button[title="Previous Match"]');
+    await page.click('button[title^="Previous Match"]');
+    await page.click('button[title^="Previous Match"]');
     // Should move up by two
     await page.waitForSelector('text=19/21');
 
@@ -427,7 +462,7 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=20/21');
 
     // Click previous button
-    await page.click('button[title="Previous Match"]');
+    await page.click('button[title^="Previous Match"]');
     await page.waitForSelector('text=19/21');
   });
 
@@ -440,7 +475,7 @@ test.describe('Notebook Search', () => {
     await page.waitForSelector('text=1/21');
 
     // Click next button
-    await page.click('button[title="Next Match"]', {
+    await page.click('button[title^="Next Match"]', {
       clickCount: 4
     });
 
@@ -547,6 +582,24 @@ test.describe('Notebook Search', () => {
     // Toggle search in selection off
     await page.keyboard.press('Alt+l');
     await expect(filterCheckbox).not.toBeChecked();
+  });
+
+  test('Show shortcuts in tooltips', async ({ page }) => {
+    // Open search box and show filters
+    await page.keyboard.press('Control+f');
+    await page.click('button[title="Show Search Filters"]');
+
+    await expect(
+      page.locator('button[title="Next Match (Ctrl+G)"]')
+    ).toHaveCount(1);
+    await expect(
+      page.locator('button[title="Previous Match (Ctrl+Shift+G)"]')
+    ).toHaveCount(1);
+    await expect(
+      page.locator(
+        'label[title="Search only in the selected cells or text (depending on edit/command mode). (Alt+L)"]'
+      )
+    ).toHaveCount(1);
   });
 });
 
@@ -661,5 +714,37 @@ test.describe('Auto search in any selection', async () => {
     await page.keyboard.press('Control+f');
     // Expect search in selection to be enabled as 1 line is selected.
     await expect(page.getByLabel('Search in 1 Selected Line')).toBeChecked();
+  });
+});
+
+test.describe('Search from selection', () => {
+  test('should expand the selection to the next occurence', async ({
+    page
+  }) => {
+    // This could be improved as the following statement will double click
+    // on the last line within the first cell that will result in the last word being selected.
+    await page.getByRole('textbox').getByText('with').nth(1).dblclick();
+
+    await page.keyboard.press('Control+d');
+
+    await expect(
+      page.getByRole('main').locator('.cm-selectionBackground')
+    ).toHaveCount(2);
+  });
+
+  test('should expand the selection to all occurence', async ({ page }) => {
+    // This could be improved as the following statement will double click
+    // on the last line within the first cell that will result in the last word being selected.
+    await page.getByRole('textbox').getByText('with').nth(1).dblclick();
+
+    await page.keyboard.press('Control+Shift+l');
+
+    // Switch back to notebook
+    // FIXME it should not be needed when we get https://github.com/jupyterlab/lumino/pull/662
+    await page.activity.activateTab(fileName);
+
+    await expect(
+      page.getByRole('main').locator('.cm-selectionBackground')
+    ).toHaveCount(4);
   });
 });

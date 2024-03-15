@@ -45,7 +45,14 @@
 }
 
 .jp-SideBar .lm-TabBar-tab {
-  padding: 16px 0;
+  /* TODO: remove ignore directive when fixed: https://github.com/csstree/csstree/issues/164 */
+  /* stylelint-disable-next-line csstree/validator */
+  padding: min(
+      5vh,
+      16px
+        /* pull vertical padding down from 16px as viewport height drops below 320px */
+    )
+    0;
   border: none;
   overflow: visible;
   flex-direction: column;

@@ -24,13 +24,28 @@
 
 .jp-FileBrowser-toolbar.jp-Toolbar {
   flex-wrap: wrap;
-  row-gap: 12px;
   border-bottom: none;
   height: auto;
-  margin: 8px 12px 0;
+
+  /* TODO: remove ignore directive when fixed: https://github.com/csstree/csstree/issues/164 */
+  /* stylelint-disable-next-line csstree/validator */
+  margin: min(
+      5vh,
+      8px
+        /* pull top margin down from 8px as viewport height drops below 160px */
+    )
+    min(
+      1.5vw,
+      12px
+        /* pull horizontal margin down from 12px as viewport width drops below 800px */
+    )
+    0;
   box-shadow: none;
   padding: 0;
-  justify-content: flex-start;
+}
+
+.jp-FileBrowser-toolbar.jp-Toolbar::part(positioning-region) {
+  row-gap: 12px;
 }
 
 .jp-FileBrowser-Panel {
@@ -41,11 +56,22 @@
 
 .jp-BreadCrumbs {
   flex: 0 0 auto;
-  margin: 8px 12px;
+
+  /* TODO: remove ignore directive when fixed: https://github.com/csstree/csstree/issues/164 */
+  /* stylelint-disable-next-line csstree/validator */
+  margin: min(
+      1.2vh,
+      8px
+        /* start pulling vertical margin down from 8px once viewport height drops below ~666px */
+    )
+    min(
+      1vw,
+      12px
+        /* start pulling horizontal margin down from 12px once viewport width drops below 1200px */
+    ); /* Using min() and vw/vh allows the margins to shrink when the screen is small or when the user zooms in, which should allow at least two files or folders to be seen within the file browser at 400% zoom */
 }
 
 .jp-BreadCrumbs-item {
-  margin: 0 2px;
   padding: 0 2px;
   border-radius: var(--jp-border-radius);
   cursor: pointer;
@@ -71,7 +97,6 @@
 .jp-FileBrowser-toolbar > .jp-Toolbar-item {
   flex: 0 0 auto;
   padding-left: 0;
-  padding-right: 2px;
   align-items: center;
   height: unset;
 }
@@ -128,7 +153,23 @@
 }
 
 .jp-DirListing-headerItem {
-  padding: 4px 12px 2px;
+  /* TODO: remove ignore directive when fixed: https://github.com/csstree/csstree/issues/164 */
+  /* stylelint-disable-next-line csstree/validator */
+  padding: min(
+      1vh,
+      4px
+        /* pull top padding down from 4px as viewport height drops below 400px */
+    )
+    min(
+      6vw,
+      12px
+        /* pull horizontal padding down from 12px as viewport width drops below 200px */
+    )
+    min(
+      1vh,
+      2px
+        /* pull bottom padding down from 2px as viewport height drops below 200px */
+    );
   font-weight: 500;
 }
 
@@ -205,7 +246,20 @@
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 4px 12px;
+
+  /* TODO: remove ignore directive when fixed: https://github.com/csstree/csstree/issues/164 */
+  /* stylelint-disable-next-line csstree/validator */
+  padding: min(
+      1vh,
+      4px
+        /* pull vertical padding down from 4px as viewport height drops below 400px */
+    )
+    min(
+      1vw,
+      12px
+        /* pull horizontal padding down from 12px as viewport width drops below 1200px */
+    ); /* Using min() and vw/vh allows the padding to shrink when the screen is small or when the user zooms in, which should allow at least two files or folders to be seen within the file browser at 400% zoom */
+
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;

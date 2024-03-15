@@ -7,11 +7,8 @@ import { PageConfig, URLExt } from '@jupyterlab/coreutils';
   'example/'
 );
 
-import '@jupyterlab/application/style/index.css';
-import '@jupyterlab/cells/style/index.css';
-import '@jupyterlab/theme-light-extension/style/theme.css';
-import '@jupyterlab/completer/style/index.css';
-import '../index.css';
+// Import style through JS file to deduplicate them.
+import './style';
 
 import {
   Toolbar as AppToolbar,
@@ -139,7 +136,11 @@ function main(): void {
   sessionContext.kernelChanged.connect(() => {
     void sessionContext.session?.kernel?.info.then(info => {
       const lang = info.language_info;
-      const mimeType = mimeService.getMimeTypeByLanguage(lang);
+      const mimeTypes = mimeService.getMimeTypeByLanguage(lang);
+      const mimeType =
+        Array.isArray(mimeTypes) && mimeTypes.length !== 0
+          ? mimeTypes[0]
+          : mimeTypes;
       cellWidget.model.mimeType = mimeType;
     });
   });
