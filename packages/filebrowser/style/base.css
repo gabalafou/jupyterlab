@@ -212,6 +212,24 @@
   user-select: none;
 }
 
+/* When zoomed in 200% or more starting from screen width 1280px */
+@media screen and (width <= 640px) {
+  .jp-DirListing-item {
+    /* calc(2.75vw - 5.6px) = 12px @ 640px viewport width, 3.2px @ 320px */
+    padding-left: calc(2.75vw - 5.6px);
+    padding-right: calc(2.75vw - 5.6px);
+  }
+}
+
+/* When zoomed in 200% or more starting from screen height 720px */
+@media screen and (height <= 360px) {
+  .jp-DirListing-item {
+    /* calc(1.22vh - 0.4px) = 4px @ 360px viewport height, 1.8px @ 180px */
+    padding-top: calc(1.22vh - 0.4px);
+    padding-bottom: calc(1.22vh - 0.4px);
+  }
+}
+
 .jp-DirListing-checkboxWrapper {
   /* Increases hit area of checkbox. */
   padding: 4px;
